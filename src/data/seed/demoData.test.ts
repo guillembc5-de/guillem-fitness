@@ -66,5 +66,6 @@ describe('datos de prueba (2 años)', () => {
     expect((await new SqliteStepDayRepository(db).get(addDays(today, -1)))?.steps).toBe(1234);
     expect(await meals.byDate(today)).toHaveLength(1);
     expect(await new SqliteWorkoutRepository(db).list()).toHaveLength(0);
-  });
+    // Generar 2 años es lento en los Mac de GitHub; el tiempo que importa es el de las consultas de arriba.
+  }, 120_000);
 });
