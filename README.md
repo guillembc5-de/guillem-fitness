@@ -39,7 +39,7 @@ Las dos opciones son gratis y usan tu Apple ID normal.
 |---|---|---|
 | Quién compila | Un Mac de GitHub (en la nube) | Tu Mac |
 | Quién instala | Sideloadly en tu PC | El propio Mac, con un comando |
-| Tiempo por compilación | 25–35 min (cupo de ~6 al mes) | Unos minutos, sin cupo |
+| Tiempo por compilación | 35–50 min (cupo de ~4–5 al mes) | Unos minutos, sin cupo |
 | Necesitas | Cuenta de GitHub, iTunes, Sideloadly | Xcode y Node.js |
 | HealthKit | Puede fallar al firmar | Más probable que funcione (no garantizado) |
 | **Caduca cada 7 días** | **Sí** | **Sí** |
@@ -112,11 +112,11 @@ Compilar para iPhone exige un Mac. Sin él, **un Mac de GitHub compila la app** 
 
 1. En tu repositorio, abre la pestaña **Actions** → **Compilar iOS** → **Run workflow**.
 2. Elige **development** y deja marcado **Incluir HealthKit**. Pulsa **Run workflow**.
-3. Tarda unos **25–35 minutos**.
+3. Tarda unos **35–50 minutos** (usa un Mac Intel: los M1 gratuitos de GitHub suelen estar sin plaza).
 4. Cuando termine, abre la ejecución y descarga el artefacto **GuillemFitness-development**. Es un `.zip` que contiene `GuillemFitness-development.ipa`. Descomprímelo.
 
 > **Cupo gratuito de GitHub:**
-> - En repositorios privados hay 2.000 minutos al mes, pero los de Mac cuentan ×10. Eso son unos 200 minutos reales, **unas 6 compilaciones al mes**.
+> - En repositorios privados hay 2.000 minutos al mes, pero los de Mac cuentan ×10. Eso son unos 200 minutos reales, **unas 4–5 compilaciones al mes**. Si una compilación no llega a arrancar porque no hay Mac libre, no gasta minutos.
 > - Sin método de pago, GitHub no cobra: simplemente para al agotarse el cupo.
 > - La versión de desarrollo **solo hay que recompilarla si cambian los módulos nativos**; ya están todos incluidos desde esta fase.
 

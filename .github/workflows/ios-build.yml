@@ -31,8 +31,10 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-latest
-    timeout-minutes: 60
+    # Mac Intel: los Mac M1 gratuitos (macos-latest) se quedaban sin plaza
+    # («job was not acquired by Runner»). Es algo más lento, pero tiene cola.
+    runs-on: macos-26-intel
+    timeout-minutes: 90
     env:
       APP_VARIANT: ${{ github.event.inputs.variant == 'development' && 'development' || 'production' }}
       CONFIGURATION: ${{ github.event.inputs.variant == 'development' && 'Debug' || 'Release' }}
