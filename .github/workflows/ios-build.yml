@@ -1,0 +1,98 @@
+# Compila la app de iOS en un Mac de GitHub (gratis) y deja un .ipa SIN FIRMAR
+# como artefacto descargable. Después se firma e instala desde Windows con
+# Sideloadly y tu Apple ID gratuito (ver README).
+#
+# - development: «GF Dev». Carga el código desde tu PC por Wi-Fi (expo start).
+#   Solo hay que recompilarla si cambian los módulos nativos.
+# - release: «Guillem Fitness». Lleva el código dentro y funciona sin el PC.
+
+name: Compilar iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: 'Versión a compilar'
+        required: true
+        default: development
+        type: choice
+        options:
+          - development
+          - release
+      healthkit:
+        description: 'Incluir HealthKit (desmárcalo si Sideloadly da error de permisos)'
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: ios-${{ github.event.inputs.variant }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      APP_VARIANT: ${{ github.event.inputs.variant == 'development' && 'development' || 'production' }}
+      CONFIGURATION: ${{ github.event.inputs.variant == 'development' && 'Debug' || 'Release' }}
+      GF_HEALTHKIT: ${{ github.event.inputs.healthkit == 'true' && 'on' || 'off' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Comprobar código (TypeScript, lint y tests)
+        run: npm run check
+
+      - name: Generar proyecto iOS
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Compilar (sin firmar)
+        run: |
+          set -euo pipefail
+          WORKSPACE=$(ls -d ios/*.xcworkspace | head -n 1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          echo "SCHEME=$SCHEME" >> "$GITHUB_ENV"
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration "$CONFIGURATION" \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/App.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            -quiet \
+            archive
+
+      - name: Empaquetar .ipa con sus permisos (HealthKit)
+        run: |
+          set -euo pipefail
+          APP=$(ls -d build/App.xcarchive/Products/Applications/*.app | head -n 1)
+          ENTITLEMENTS="ios/$SCHEME/$SCHEME.entitlements"
+          # Firma «ad hoc» solo para incrustar los permisos; Sideloadly la
+          # sustituye por la firma de tu Apple ID y conserva los permisos.
+          if [ -f "$ENTITLEMENTS" ]; then
+            codesign --force --sign - --entitlements "$ENTITLEMENTS" "$APP"
+          fi
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry "GuillemFitness-${{ github.event.inputs.variant }}.ipa" Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GuillemFitness-${{ github.event.inputs.variant }}
+          path: GuillemFitness-${{ github.event.inputs.variant }}.ipa
+          retention-days: 14

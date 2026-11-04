@@ -1,0 +1,355 @@
+# Guillem Fitness (GF)
+
+App personal para iPhone con tres módulos: **entreno** al estilo Hevy, **pasos** con calendario y **calorías** estimadas a partir de fotos.
+Todo se guarda en el móvil: sin cuentas, sin nube y sin anuncios.
+
+| Fase | Contenido | Estado |
+|---|---|---|
+| 1 | Plan (`docs/PLAN.md`) | ✅ |
+| 2 | Base: design system, pestañas, base de datos, onboarding y Perfil | ✅ |
+| 3 | Entreno: 143 ejercicios, rutinas, entreno activo, descanso, historial, gráficas y récords | ✅ |
+| 4 | Pasos: anillo, calendario, gráficas semana/mes, racha y permisos | ✅ |
+| 5 | Calorías: foto → IA → revisión, entrada manual, resumen diario, historial y pendientes | ✅ |
+| 6 | Pulido: exportar/importar JSON, datos de prueba, contraste AA verificado, arranque más ligero | ✅ |
+
+**Pendiente de comprobar en el iPhone real** (no se puede probar sin Mac ni móvil): la primera compilación (en GitHub o en el Mac), HealthKit con Apple ID gratuito, las notificaciones con la app cerrada y la llamada real a Gemini o Claude. Si algo falla, el error de GitHub Actions o una captura bastan para arreglarlo.
+
+---
+
+## Lo que hace la app
+
+- **Entreno:** 143 ejercicios en español (buscador sin tildes, filtros por músculo y material, ejercicios propios). Tus rutinas lower 1 y upper 1 precargadas. Entreno activo con lo que hiciste la última vez, descanso automático con aviso aunque la app esté cerrada, historial, gráficas (peso máximo, 1RM de Epley, volumen) y récords. Si cierras la app a la fuerza, vuelves al mismo punto.
+- **Pasos:** anillo del día, km, kcal y racha; semana, mes y calendario por colores; una sola fuente (Salud o, si no hay permiso, el sensor del iPhone).
+- **Calorías:** foto → la IA estima → tú corriges → guardas. También a mano. Resumen con lo comido en verde (+) y los pasos en rojo (−), macros, comidas del día, historial y fotos pendientes si no hay conexión.
+- **Perfil:** datos y objetivos, clave de la IA con «Probar conexión», copia de seguridad en JSON y datos de prueba.
+
+## Uso diario: tres consejos
+
+1. **Exporta una copia cada semana** (Perfil → Copia de seguridad y datos de prueba → Exportar). Guárdala en Archivos o en tu correo. Con el Apple ID gratuito la app caduca cada 7 días; tus datos no se pierden al refrescarla, pero la copia es tu seguro.
+2. **Refresca la app antes de que caduquen los 7 días**: con Sideloadly (Opción A, paso A6) o con un comando desde el Mac (Opción B, paso B5).
+3. **Abre la app al menos una vez cada pocos días** si usas el sensor en vez de Salud: el sensor solo recuerda 7 días.
+
+---
+
+## Cómo instalarla en tu iPhone: elige opción
+
+Las dos opciones son gratis y usan tu Apple ID normal.
+
+| | **A · Desde Windows** | **B · Desde un Mac** |
+|---|---|---|
+| Quién compila | Un Mac de GitHub (en la nube) | Tu Mac |
+| Quién instala | Sideloadly en tu PC | El propio Mac, con un comando |
+| Tiempo por compilación | 25–35 min (cupo de ~6 al mes) | Unos minutos, sin cupo |
+| Necesitas | Cuenta de GitHub, iTunes, Sideloadly | Xcode y Node.js |
+| HealthKit | Puede fallar al firmar | Más probable que funcione (no garantizado) |
+| **Caduca cada 7 días** | **Sí** | **Sí** |
+| Tus datos al refrescar | Se conservan | Se conservan |
+
+> **Lo que no cambia con el Mac: la app caduca cada 7 días igualmente.** Es un límite de Apple para cualquier Apple ID gratuito, no depende del ordenador. Al caducar, la app no se abre hasta que la vuelves a instalar, pero **tus datos no se pierden**.
+>
+> Otros límites del Apple ID gratuito: máximo 3 apps instaladas así a la vez y 10 identificadores de app nuevos por semana (GF usa 2: «GF Dev» y «Guillem Fitness»).
+
+> **Opción C · Sin caducidad semanal (de pago):** el Apple Developer Program (99 €/año) hace que la instalación dure un año y permite TestFlight. Con él ni siquiera hace falta un Mac: la app se compila en la nube de Expo. Si algún día lo quieres, pídemelo y preparo la configuración.
+
+---
+
+## Opción A · Instalar desde Windows (sin Mac)
+
+Compilar para iPhone exige un Mac. Sin él, **un Mac de GitHub compila la app** y **Sideloadly la instala** desde tu PC.
+
+### Lo que necesitas (una sola vez)
+
+1. **Git para Windows.** Abre PowerShell y ejecuta:
+   ```bash
+   winget install --id Git.Git -e
+   ```
+   Después **cierra PowerShell y ábrelo de nuevo**; si no, no reconoce el comando `git`.
+2. **Una cuenta gratuita de GitHub** en [github.com](https://github.com). Solo sirve para compilar; la app no la usa.
+3. **iTunes e iCloud descargados de la web de Apple**, no de la Microsoft Store (Sideloadly lo necesita así):
+   - [apple.com/itunes](https://www.apple.com/itunes/)
+   - iCloud para Windows desde la web de Apple
+4. **Sideloadly** desde su web oficial, [sideloadly.io](https://sideloadly.io).
+5. **El cable USB** del iPhone.
+
+### A1 · Subir el proyecto a GitHub (repositorio privado)
+
+1. En GitHub, pulsa **New repository**. Ponle de nombre `guillem-fitness`, márcalo como **Private** y no añadas ningún archivo.
+2. Solo la primera vez que usas Git en este PC, dile quién eres (cualquier nombre; el correo puede ser el de GitHub):
+   ```bash
+   git config --global user.name "Guillem"
+   ```
+   ```bash
+   git config --global user.email "TU_CORREO"
+   ```
+3. En PowerShell, entra en la carpeta del proyecto:
+   ```bash
+   cd "$HOME\Downloads\fabrica-videos\guillem-fitness"
+   ```
+4. Ejecuta estos comandos uno a uno. Sustituye `TU_USUARIO` por tu usuario de GitHub:
+   ```bash
+   git init
+   ```
+   ```bash
+   git add .
+   ```
+   ```bash
+   git commit -m "Fase 2: base"
+   ```
+   ```bash
+   git branch -M main
+   ```
+   ```bash
+   git remote add origin https://github.com/TU_USUARIO/guillem-fitness.git
+   ```
+   ```bash
+   git push -u origin main
+   ```
+   La primera vez, Git abre el navegador para que inicies sesión en GitHub.
+
+> Ninguna clave de API va en el repositorio: se escriben dentro de la app y se guardan en el llavero del iPhone.
+
+### A2 · Compilar la app en GitHub
+
+1. En tu repositorio, abre la pestaña **Actions** → **Compilar iOS** → **Run workflow**.
+2. Elige **development** y deja marcado **Incluir HealthKit**. Pulsa **Run workflow**.
+3. Tarda unos **25–35 minutos**.
+4. Cuando termine, abre la ejecución y descarga el artefacto **GuillemFitness-development**. Es un `.zip` que contiene `GuillemFitness-development.ipa`. Descomprímelo.
+
+> **Cupo gratuito de GitHub:**
+> - En repositorios privados hay 2.000 minutos al mes, pero los de Mac cuentan ×10. Eso son unos 200 minutos reales, **unas 6 compilaciones al mes**.
+> - Sin método de pago, GitHub no cobra: simplemente para al agotarse el cupo.
+> - La versión de desarrollo **solo hay que recompilarla si cambian los módulos nativos**; ya están todos incluidos desde esta fase.
+
+### A3 · Instalar con Sideloadly
+
+1. Conecta el iPhone por cable al PC. Desbloquéalo y pulsa **Confiar** en este ordenador.
+2. Abre Sideloadly:
+   - Arrastra el `.ipa` a la ventana.
+   - Escribe tu Apple ID.
+   - Pulsa **Start**.
+3. Te pedirá la contraseña de tu Apple ID y, si tienes verificación en dos pasos, el código. Lo escribes tú en Sideloadly; se envía solo a Apple.
+
+### A4 · Permitir la app en el iPhone (solo la primera vez)
+
+1. Ve a **Ajustes → Privacidad y seguridad → Modo de desarrollador** y actívalo. El iPhone se reinicia; al volver, confirma **Activar**.
+2. Ve a **Ajustes → General → VPN y gestión de dispositivos**, pulsa tu Apple ID y después **Confiar**.
+
+### A5 · Arrancar (versión de desarrollo)
+
+La versión **GF Dev** carga el código desde tu PC por Wi-Fi, así que ves los cambios de cada fase **sin recompilar**.
+
+1. El PC y el iPhone tienen que estar en la **misma Wi-Fi**, y esa red debe estar marcada como **Privada** en Windows.
+2. En la carpeta del proyecto, ejecuta:
+   ```bash
+   npm install
+   ```
+   ```bash
+   npm start
+   ```
+   Si Windows pregunta por el firewall, **permite Node.js en redes privadas**.
+3. Abre **GF Dev** en el iPhone y toca el servidor que aparece. Si no aparece, escribe la dirección que muestra la terminal (`http://192.168.x.x:8081`).
+
+### A6 · Cada 7 días: refrescar
+
+- Si la app caduca, no se abre, pero **los datos siguen ahí**.
+- Para refrescarla: conecta el iPhone y vuelve a instalar **el mismo `.ipa`** con Sideloadly.
+- Sideloadly también puede refrescarla solo por Wi-Fi si el PC está encendido. Actívalo en sus opciones avanzadas (*Automatic refresh*).
+
+### Versión definitiva (sin el PC)
+
+En el paso A2, elige **release**. Se instala igual y aparece como **Guillem Fitness**. Lleva todo el código dentro y funciona sin el PC. Puede convivir con GF Dev.
+
+### Si HealthKit da problemas
+
+Con un Apple ID gratuito, Apple a veces no concede el permiso de Salud. Si Sideloadly da un error de *entitlements* o de HealthKit:
+
+1. Vuelve a compilar (paso A2) **desmarcando «Incluir HealthKit»**.
+2. La app contará los pasos con el **podómetro del iPhone**. Sin Apple Watch, es el mismo sensor que usa Salud.
+3. Como el podómetro solo guarda 7 días, la app apunta cada día en su base de datos para que el calendario no se vacíe.
+
+---
+
+## Opción B · Instalar desde un Mac
+
+Con un Mac no hacen falta GitHub, iTunes ni Sideloadly: el Mac compila la app y la instala directamente en el iPhone conectado por cable. **Sigue caducando cada 7 días** (Apple ID gratuito), pero refrescarla es repetir un comando.
+
+### B1 · Preparar el Mac (una sola vez)
+
+1. Instala **Xcode** desde la App Store (gratis; ocupa bastante). Ábrelo una vez, acepta la licencia y deja que instale los componentes de iOS. Si la App Store no te deja instalar la versión actual, actualiza macOS.
+2. En Xcode, ve a **Ajustes → Cuentas**, pulsa **+** y añade tu **Apple ID** normal.
+3. Instala **Homebrew** siguiendo las instrucciones de [brew.sh](https://brew.sh). Después, en la app Terminal:
+   ```bash
+   brew install node cocoapods
+   ```
+4. Copia al Mac la carpeta `guillem-fitness` (por AirDrop, USB o desde GitHub si la subiste). **No copies `node_modules`**: se vuelve a instalar.
+5. En Terminal, dentro de la carpeta:
+   ```bash
+   npm install
+   ```
+
+### B2 · Instalar la versión definitiva
+
+1. Conecta el iPhone por cable al Mac, desbloquéalo y pulsa **Confiar** en este ordenador.
+2. Ejecuta:
+   ```bash
+   npx expo run:ios --device --configuration Release
+   ```
+   - Si te pregunta en qué dispositivo instalar, elige tu iPhone.
+   - Tarda unos minutos la primera vez; las siguientes, bastante menos.
+   - Instala **Guillem Fitness**, que lleva todo el código dentro y funciona sin el Mac.
+
+**Si da un error de firma («signing», «development team», «provisioning»):**
+
+1. Abre el proyecto en Xcode:
+   ```bash
+   xed ios
+   ```
+2. Selecciona el proyecto **GuillemFitness** (arriba a la izquierda) → pestaña **Signing & Capabilities**.
+3. Marca **Automatically manage signing** y en **Team** elige tu nombre (*Personal Team*).
+4. Cierra Xcode y repite el comando de B2.
+
+**Si el error menciona HealthKit** (*«Personal development teams do not support the HealthKit capability»*), compila sin HealthKit; los pasos se contarán con el sensor del iPhone. Hay que regenerar el proyecto nativo (la carpeta `ios`) y volver a compilar:
+```bash
+GF_HEALTHKIT=off npx expo prebuild --platform ios --clean
+```
+```bash
+npx expo run:ios --device --configuration Release
+```
+Al regenerar se pierde el equipo de firma: si vuelve a dar error de firma, repite los pasos de arriba (Xcode → Team).
+
+**Si el error dice que el identificador ya está registrado** (*«Failed to register bundle identifier»*), cambia en `app.config.ts` `com.guillem.fitness` por algo tuyo, por ejemplo `com.guillembc.fitness`. Después regenera y compila como en el caso de HealthKit, pero sin `GF_HEALTHKIT=off`. Hazlo antes de empezar a usar la app: si lo cambias después, el iPhone la trata como una app nueva. Para recuperar los datos en ese caso, exporta antes la copia JSON e impórtala después.
+
+### B3 · Permitir la app en el iPhone (solo la primera vez)
+
+Igual que en A4:
+
+1. **Ajustes → Privacidad y seguridad → Modo de desarrollador** → activar y reiniciar.
+2. **Ajustes → General → VPN y gestión de dispositivos** → tu Apple ID → **Confiar**.
+
+### B4 · Versión de desarrollo (opcional, para ver cambios al instante)
+
+Solo si vas a pedirme cambios y quieres verlos sin recompilar. Instala **GF Dev** una vez:
+
+```bash
+APP_VARIANT=development npx expo run:ios --device
+```
+
+Las siguientes veces basta con arrancar el servidor (Mac e iPhone en la misma Wi-Fi) y abrir GF Dev:
+
+```bash
+npm start
+```
+
+### B5 · Cada 7 días: refrescar
+
+Conecta el iPhone y repite el comando de B2:
+
+```bash
+npx expo run:ios --device --configuration Release
+```
+
+Se instala encima de la anterior: **no se pierde nada**. Si se te pasa y la app caduca, no se abre hasta que la reinstalas, pero los datos siguen ahí. Hazlo mejor el día 6 que el día 8.
+
+Si compilaste sin HealthKit, no hace falta repetir `GF_HEALTHKIT=off`: la carpeta `ios` ya está generada así. Solo afecta cuando se regenera con `prebuild --clean`.
+
+---
+
+## Clave de la IA (para las fotos de comida)
+
+- **Gemini (gratis, por defecto):**
+  1. Entra en [aistudio.google.com/apikey](https://aistudio.google.com/apikey) con tu cuenta de Google.
+  2. Pulsa **Create API key** y cópiala.
+  3. En la app ve a **Perfil → Análisis de fotos**, pégala en Gemini y pulsa **Guardar clave**.
+  - En la capa gratuita, Google puede usar lo que envías para mejorar sus modelos.
+- **Claude (opcional, de pago por uso):** crea la clave en la consola de Anthropic ([platform.claude.com](https://platform.claude.com)) y pégala en la tarjeta de Claude. Puedes cambiar de proveedor cuando quieras.
+
+La clave se guarda **cifrada en el llavero del iPhone** (`expo-secure-store`). Nunca va en el código, en la base de datos ni en git.
+
+> ⚠️ **Si algún día publicas la app:** la llamada a la IA debe pasar por **un servidor propio** (por ejemplo, una función de Supabase o Cloudflare Workers) que guarde la clave. Una clave dentro de una app publicada se puede extraer del paquete en minutos.
+
+---
+
+## Desarrollo
+
+Requisito: Node 24 o superior.
+
+| Comando | Qué hace |
+|---|---|
+| `npm start` | Servidor de desarrollo para GF Dev |
+| `npm run check` | TypeScript + lint + tests (lo mismo que comprueba GitHub antes de compilar) |
+| `npm test` | Tests unitarios |
+| `npm run db:generate` | Genera una migración SQL tras cambiar `src/data/db/schema.ts` |
+
+**Estructura:**
+
+```
+src/
+├─ app/          pantallas (Expo Router): onboarding, (tabs)/entreno · pasos · calorias · perfil
+├─ design/       colores, tipografía, espaciados y componentes base
+├─ domain/       lógica pura con tests: kcal (Mifflin-St Jeor), formato español, días locales…
+├─ data/         base de datos (Drizzle + SQLite) y repositorios
+├─ features/     lógica de cada módulo (hooks, formularios, componentes)
+└─ lib/          utilidades: ids, llavero, caché de consultas
+drizzle/         migraciones SQL generadas
+docs/PLAN.md     plan aprobado (arquitectura, esquema y diseño)
+```
+
+**Reglas del proyecto:**
+
+- Las pantallas solo acceden a los datos a través de repositorios (`src/data/repositories`). Para conectar una nube se cambia `getRepositories()` y nada más.
+- Todas las tablas tienen `id` (UUID), `created_at`, `updated_at` y `deleted_at` (borrado suave).
+- Los pesos se guardan siempre en kg; los días, como fecha local `AAAA-MM-DD` calculada al guardar.
+- TypeScript estricto y sin `any`; el lint falla si aparece uno.
+- Las gráficas se dibujan con Skia directamente (`src/design/components/LineChart.tsx`). No uso victory-native porque su versión actual exige otro paquete de Skia distinto al que fija Expo.
+- Los tests de repositorios (`src/data/repositories/sqlite/repositories.test.ts`) ejecutan las migraciones y consultas reales sobre el SQLite de Node.
+- El contraste de todos los colores de texto se comprueba en `src/design/contrast.test.ts` (WCAG AA, 4,5:1).
+- Copia de seguridad: `src/data/backup/backup.ts` (exporta todas las tablas, también los borrados suaves; importa fusionando por id en una transacción).
+- Datos de prueba: `src/data/seed/demoData.ts` (2 años, deterministas, marcados con `is_demo`).
+
+**Pasos:** una sola fuente por plataforma (Salud en iPhone, Health Connect en Android) y el sensor solo si no hay permiso; nunca se suman fuentes. Los días se guardan en la tabla `step_day`, así el calendario conserva el historial aunque el sensor solo recuerde 7 días. La parte de Android está implementada pero no probada en un móvil real.
+
+**Calorías por foto:** la foto se reduce a 1024 px y se comprime en JPEG antes de enviarla. La IA responde con salida estructurada (JSON), que se valida con zod; si falla, se reintenta una vez y después se pasa a entrada manual. Sin conexión, la foto se guarda como pendiente. Gemini usa `generateContent` por REST; Claude usa el SDK oficial `@anthropic-ai/sdk` con `messages.parse` y por defecto Claude Haiku 5.5 (el más barato con visión; se puede cambiar en Perfil). Las kcal de la IA son siempre una estimación: no cuentan hasta que revisas y pulsas Guardar.
+
+**Añadir ejercicios a la biblioteca:** edita `src/data/seed/exercises.ts`. Copia una línea, pon un UUID nuevo y cambia el resto. Al abrir la app se insertan los que falten.
+
+---
+
+## Problemas frecuentes
+
+| Problema | Solución |
+|---|---|
+| «No se puede verificar la app» o no abre | Paso A4 / B3: confiar en tu Apple ID y activar el Modo desarrollador |
+| La app no abre tras una semana | Ha caducado: paso A6 (Windows) o B5 (Mac). Los datos se conservan |
+| GF Dev no encuentra el servidor | Misma Wi-Fi, red «Privada» en Windows y Node.js permitido en el firewall. Prueba a escribir la dirección a mano |
+| Sideloadly: «Maximum App ID limit» | Con un Apple ID gratuito puedes registrar 10 apps por semana; espera unos días o reutiliza el mismo `.ipa` |
+| Error de HealthKit al instalar | Compila sin HealthKit: casilla en GitHub (Opción A) o `GF_HEALTHKIT=off` (Opción B) |
+| El workflow falla en «Comprobar código» | Ejecuta `npm run check` en el PC para ver el error |
+| La foto no se analiza | Perfil → Análisis de fotos → «Probar conexión». Sin red, guárdala como pendiente |
+| He cambiado de móvil | Instala la app, haz el onboarding y en Perfil → Importar copia elige tu último JSON |
+
+---
+
+## Cómo pedir cambios concretos
+
+Pide un cambio nombrando **la pantalla y el comportamiento**, no el módulo entero. Ejemplos que funcionan bien:
+
+- «En el entreno activo, que el botón ✓ copie también el peso de la serie anterior si está vacío.»
+- «En Pasos, cambia el umbral ámbar del calendario del 50 % al 70 %.» (`src/domain/steps.ts` → `compliance`)
+- «Añade a la biblioteca el ejercicio X con grupo Y y material Z.» (`src/data/seed/exercises.ts`)
+- «En Calorías, que la merienda empiece a las 17:00.» (`src/domain/nutrition.ts` → `mealTypeForTime`)
+- «Cambia el texto del aviso de permisos de Salud.» (`src/features/steps/PermissionCard.tsx`)
+
+Cada módulo vive en su carpeta (`src/features/workout`, `steps`, `nutrition`, `profile`) y la lógica pura en `src/domain`, con tests. Un cambio así toca uno o dos archivos y se comprueba con `npm run check`. Los cambios de JavaScript llegan al iPhone por Wi-Fi sin recompilar; solo hay que recompilar en GitHub si se añade una librería nativa.
+
+---
+
+## Conectar una nube más adelante (por ejemplo, Supabase)
+
+La app está preparada para no reescribir nada:
+
+1. **Crear las tablas** en Supabase (Postgres) con las mismas columnas que `src/data/db/schema.ts`, y activar Row Level Security con una política por usuario (`user_id = auth.uid()`).
+2. **Añadir inicio de sesión** (Supabase Auth, por ejemplo con «Iniciar sesión con Apple») y una columna `user_id` en cada tabla.
+3. **Sincronizar, no sustituir:** mantener SQLite como base local y añadir un proceso que suba las filas con `updated_at` posterior a la última sincronización y baje las remotas. Gana el `updated_at` más reciente, la misma regla que ya usa la importación JSON (`src/data/backup/backup.ts`). Los borrados viajan como `deleted_at`, nunca como borrados físicos.
+4. **Fotos:** subirlas a Supabase Storage y guardar la URL en `meal.photo_uri`.
+5. **La IA a través de un servidor propio:** mover la llamada a Gemini/Claude a una Edge Function que guarde la clave. La app deja de tener clave.
+6. **Punto de cambio en el código:** `getRepositories()` en `src/data/repositories/index.ts`. Las pantallas no se tocan.
