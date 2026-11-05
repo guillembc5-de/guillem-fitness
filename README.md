@@ -161,11 +161,18 @@ En el paso A2, elige **release**. Se instala igual y aparece como **Guillem Fitn
 
 ### Si HealthKit da problemas
 
-Con un Apple ID gratuito, Apple a veces no concede el permiso de Salud. Si Sideloadly da un error de *entitlements* o de HealthKit:
+Apple permite HealthKit con un Apple ID gratuito, y el `.ipa` ya lleva el permiso. Si en **Pasos** sale «Salud no está disponible», lo más probable es que Sideloadly lo haya quitado al firmar. El aviso muestra un **Detalle técnico** con el error exacto.
 
-1. Vuelve a compilar (paso A2) **desmarcando «Incluir HealthKit»**.
+**Prueba para conservar el permiso:**
+1. En Sideloadly, abre **Advanced Options** y marca **Use custom entitlements**.
+2. Pulsa **Browse** y elige `sideloadly\GuillemFitness.entitlements`, de la carpeta del proyecto.
+3. Pulsa **Start** como siempre y, en el iPhone, abre **Pasos → Reintentar**.
+
+**Si sigue sin funcionar**, o Sideloadly da un error de *entitlements*:
+1. En el aviso, pulsa **Usar solo el sensor y ocultar este aviso**. Si Sideloadly no deja instalar, vuelve a compilar (paso A2) **desmarcando «Incluir HealthKit»**.
 2. La app contará los pasos con el **podómetro del iPhone**. Sin Apple Watch, es el mismo sensor que usa Salud.
 3. Como el podómetro solo guarda 7 días, la app apunta cada día en su base de datos para que el calendario no se vacíe.
+4. Con un Mac (Opción B), Xcode sí activa el permiso de Salud con tu Apple ID gratuito.
 
 ---
 
@@ -261,7 +268,11 @@ Si compilaste sin HealthKit, no hace falta repetir `GF_HEALTHKIT=off`: la carpet
   2. Pulsa **Create API key** y cópiala.
   3. En la app ve a **Perfil → Análisis de fotos**, pégala en Gemini y pulsa **Guardar clave**.
   - En la capa gratuita, Google puede usar lo que envías para mejorar sus modelos.
-- **Claude (opcional, de pago por uso):** crea la clave en la consola de Anthropic ([platform.claude.com](https://platform.claude.com)) y pégala en la tarjeta de Claude. Puedes cambiar de proveedor cuando quieras.
+  - La app usa `gemini-3.6-flash`. Si tu clave no puede usarlo, prueba sola `gemini-3.8-flash` y `gemini-3.5-flash-lite`.
+  - **Probar la clave desde el PC** (sin compilar): en PowerShell, dentro de la carpeta del proyecto, escribe `$env:GEMINI_API_KEY = "tu clave"` y después `node scripts/probar-gemini.mjs`. Para usar una foto tuya, añade la ruta: `node scripts/probar-gemini.mjs "C:\ruta\plato.jpg"`. (Si usas `npm` y PowerShell dice que «la ejecución de scripts está deshabilitada», escribe `npm.cmd` en lugar de `npm`.)
+- **Claude (opcional, de pago por uso):** crea la clave en la consola de Anthropic ([platform.claude.com/settings/keys](https://platform.claude.com/settings/keys)) y pégala en la tarjeta de Claude. Puedes cambiar de proveedor cuando quieras.
+  - Al crearla, **elige un workspace** (el «Default» vale). Una clave sin workspace no funciona en la app.
+  - Hay que **comprar saldo** en *Billing* antes de que funcione; cada foto cuesta céntimos.
 
 La clave se guarda **cifrada en el llavero del iPhone** (`expo-secure-store`). Nunca va en el código, en la base de datos ni en git.
 

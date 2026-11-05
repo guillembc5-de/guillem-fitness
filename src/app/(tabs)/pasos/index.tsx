@@ -10,7 +10,7 @@ import type { StepDay } from '@/domain/stepTypes';
 import { useProfile } from '@/features/profile/queries';
 import { DayDetailSheet, MonthCalendar, PeriodHeader } from '@/features/steps/components';
 import { formatMonthTitle, formatWeekRange, SOURCE_LABELS, WEEKDAY_INITIALS } from '@/features/steps/labels';
-import { PermissionBanner, StepsIntro } from '@/features/steps/PermissionCard';
+import { PermissionBanner, SensorOnlyNote, StepsIntro } from '@/features/steps/PermissionCard';
 import { useRecentStepDays, useStepDays, useStepsSync } from '@/features/steps/queries';
 import { useNow } from '@/lib/useNow';
 
@@ -78,7 +78,7 @@ export default function PasosScreen() {
         <Stat label="Racha" value={`🔥 ${currentStreak}`} unit={currentStreak === 1 ? 'día' : 'días'} />
       </Card>
 
-      {status ? <PermissionBanner reason={status.reason} /> : null}
+      {status ? <PermissionBanner reason={status.reason} detail={status.healthError} /> : null}
 
       <SegmentedControl accessibilityLabel="Vista" options={VIEWS} value={view} onChange={setView} />
 
@@ -90,6 +90,7 @@ export default function PasosScreen() {
         {status?.source ? `Fuente: ${SOURCE_LABELS[status.source]}` : 'Sin fuente de pasos'}
         {status?.source === 'pedometer' ? ' · solo recuerda 7 días; la app guarda cada día' : ''}
       </AppText>
+      {status?.reason === 'sensor_only' ? <SensorOnlyNote /> : null}
     </Screen>
   );
 }

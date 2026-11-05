@@ -57,10 +57,11 @@ const MESSAGES: Partial<Record<SourceReason, { title: string; body: string }>> =
 };
 
 /** Aviso claro cuando falta un permiso, con reintentar y acceso a Ajustes. */
-export function PermissionBanner({ reason }: { reason: SourceReason }) {
+export function PermissionBanner({ reason, detail }: { reason: SourceReason; detail?: string }) {
   const setup = useStepsSetup();
   const message = MESSAGES[reason];
   if (!message) return null;
+  const showDetail = reason === 'health_unavailable' && detail;
   return (
     <Card style={styles.banner} accessibilityRole="alert">
       <View style={styles.bannerHeader}>
@@ -72,8 +73,20 @@ export function PermissionBanner({ reason }: { reason: SourceReason }) {
       <AppText variant="caption" color="textSecondary">
         {message.body}
       </AppText>
+      {showDetail ? (
+        <AppText variant="caption" color="textTertiary" selectable>
+          Detalle técnico: {detail}
+        </AppText>
+      ) : null}
       <View style={styles.row}>
-        <Button title="Reintentar" variant="secondary" compact onPress={() => setup.mutate('health')} loading={setup.isPending} style={styles.flex} />
+        <Button
+          title="Reintentar"
+          variant="secondary"
+          compact
+          onPress={() => setup.mutate('health')}
+          loading={setup.isPending && setup.variables === 'health'}
+          style={styles.flex}
+        />
         <Button
           title="Abrir Ajustes"
           variant="secondary"
@@ -82,7 +95,30 @@ export function PermissionBanner({ reason }: { reason: SourceReason }) {
           style={styles.flex}
         />
       </View>
+      {reason === 'health_unavailable' ? (
+        <Button
+          title="Usar solo el sensor y ocultar este aviso"
+          variant="ghost"
+          compact
+          onPress={() => setup.mutate('sensor')}
+          loading={setup.isPending && setup.variables === 'sensor'}
+        />
+      ) : null}
     </Card>
+  );
+}
+
+/** Con «solo el sensor» elegido: forma de volver a probar con Salud. */
+export function SensorOnlyNote() {
+  const setup = useStepsSetup();
+  return (
+    <Button
+      title={`Volver a intentar con ${HEALTH_APP_NAME}`}
+      variant="ghost"
+      compact
+      onPress={() => setup.mutate('health')}
+      loading={setup.isPending}
+    />
   );
 }
 

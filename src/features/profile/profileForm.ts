@@ -3,7 +3,7 @@ import { fromDisplayWeight, toDisplayWeight } from '@/domain/format';
 import { parseDecimal, toInputText } from '@/domain/parseNumber';
 import type { ActivityLevel, AiProvider, Goal, Profile, ProfileInput, Sex, WeightUnit } from '@/domain/types';
 
-export const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.6-flash';
 export const DEFAULT_CLAUDE_MODEL = 'claude-haiku-5-5';
 
 export const LOSE_RATES = [0.25, 0.5, 0.75, 1] as const;

@@ -8,7 +8,16 @@ import { healthProvider } from './providers/health';
 import { pedometerProvider } from './providers/pedometer';
 import type { StepsProvider } from './providers/types';
 
-export type StepsStatus = SourceDecision & { setupDone: boolean; syncedAt: number | null };
+export type StepsStatus = SourceDecision & {
+  setupDone: boolean;
+  syncedAt: number | null;
+  /** Error exacto de Salud, para saber por qué no se puede leer. */
+  healthError?: string;
+};
+
+function errorText(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
 
 function sum(map: Map<LocalDate, number> | null): number | null {
   if (!map) return null;
@@ -36,9 +45,12 @@ export async function syncSteps(): Promise<StepsStatus> {
   // 1. Salud / Health Connect (si no has elegido solo el sensor).
   let healthState: HealthState = 'unavailable';
   let healthWeek: Map<LocalDate, number> | null = null;
+  let healthError: string | undefined;
   if (!prefs.sensorOnly && healthProvider) {
     try {
-      if (await healthProvider.isAvailable()) {
+      if (!(await healthProvider.isAvailable())) {
+        healthError = 'Este dispositivo dice que Salud no está disponible';
+      } else {
         const permission = await healthProvider.hasPermission();
         if (permission === false) {
           healthState = 'denied';
@@ -47,8 +59,9 @@ export async function syncSteps(): Promise<StepsStatus> {
           healthState = 'ok';
         }
       }
-    } catch {
+    } catch (e) {
       healthState = 'unavailable';
+      healthError = errorText(e);
     }
   }
 
@@ -76,7 +89,7 @@ export async function syncSteps(): Promise<StepsStatus> {
 
   const provider: StepsProvider | null =
     decision.source === 'pedometer' ? pedometerProvider : decision.source && healthProvider ? healthProvider : null;
-  if (!provider) return { ...decision, setupDone: true, syncedAt: null };
+  if (!provider) return { ...decision, setupDone: true, syncedAt: null, healthError };
 
   // 3. Solo lo nuevo: desde el último día guardado (menos uno, por si cambió) o todo el historial posible.
   const earliest = addDays(today, -(provider.historyDays - 1));
@@ -87,7 +100,7 @@ export async function syncSteps(): Promise<StepsStatus> {
   try {
     days = from >= weekFrom && weekData ? weekData : await provider.dailySteps(from, today);
   } catch {
-    return { ...decision, setupDone: true, syncedAt: null };
+    return { ...decision, setupDone: true, syncedAt: null, healthError };
   }
 
   const incoming: IncomingStepDay[] = [];
@@ -103,7 +116,7 @@ export async function syncSteps(): Promise<StepsStatus> {
     today,
   });
 
-  return { ...decision, setupDone: true, syncedAt: Date.now() };
+  return { ...decision, setupDone: true, syncedAt: Date.now(), healthError };
 }
 
 /** Primera vez: pide Salud y, como respaldo, el sensor de movimiento. */
