@@ -1,15 +1,23 @@
 import { Pressable, StyleSheet, TextInput } from 'react-native';
 
-import { AppText, colors, radii, spacing, typography } from '@/design';
+import { AppText, colors, radii, spacing, typography, type ColorToken } from '@/design';
 import type { SetType } from '@/domain/enums';
 import { formatDuration } from '@/domain/format';
 import { sanitizeDecimalInput } from '@/domain/parseNumber';
 
-import { SET_TYPE_LABELS } from './labels';
+import { SET_TYPE_LABELS, setLabel } from './labels';
 
-/** Número de serie, o «W» en ámbar si es de calentamiento. Tocable para cambiar el tipo. */
+/** Color de la etiqueta de cada tipo de serie. */
+export const SET_TYPE_COLORS: Record<SetType, ColorToken> = {
+  normal: 'text',
+  warmup: 'warmup',
+  dropset: 'info',
+  failure: 'accentText',
+};
+
+/** Número de serie, o su letra (W calentamiento, D drop set, F al fallo). Tocable para cambiar el tipo. */
 export function SetBadge({ setType, number, onPress }: { setType: SetType; number: number; onPress?: () => void }) {
-  const label = setType === 'warmup' ? 'W' : String(number);
+  const label = setLabel(setType, number);
   return (
     <Pressable
       accessibilityRole="button"
@@ -19,7 +27,7 @@ export function SetBadge({ setType, number, onPress }: { setType: SetType; numbe
       onPress={onPress}
       style={styles.badge}
     >
-      <AppText variant="headline" color={setType === 'warmup' ? 'warmup' : 'text'} style={styles.tabular}>
+      <AppText variant="headline" color={SET_TYPE_COLORS[setType]} style={styles.tabular}>
         {label}
       </AppText>
     </Pressable>
@@ -68,6 +76,17 @@ export function RestLabel({ seconds, onPress }: { seconds: number | null; onPres
 }
 
 export const REST_CHOICES = [30, 45, 60, 75, 90, 120, 150, 180, 240, 300] as const;
+
+/** Valores de RPE que se pueden elegir (esfuerzo percibido). */
+export const RPE_CHOICES = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10] as const;
+
+export const RPE_HINTS: Record<number, string> = {
+  6: 'Podrías hacer 4+ reps más',
+  7: 'Podrías hacer 3 reps más',
+  8: 'Podrías hacer 2 reps más',
+  9: 'Podrías hacer 1 rep más',
+  10: 'Al fallo, ni una más',
+};
 
 const styles = StyleSheet.create({
   badge: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },

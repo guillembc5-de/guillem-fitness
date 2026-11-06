@@ -3,7 +3,8 @@ import { addDays, todayLocalDate, type LocalDate } from '@/domain/localDay';
 import type { IncomingStepDay } from '@/domain/stepTypes';
 
 import { decideSource, type HealthState, type SourceDecision } from './decideSource';
-import { getStepPrefs, setStepPrefs } from './prefs';
+import type { HealthLinkDay } from './healthLink';
+import { getStepPrefs, setLastHealthLink, setStepPrefs } from './prefs';
 import { healthProvider } from './providers/health';
 import { pedometerProvider } from './providers/pedometer';
 import type { StepsProvider } from './providers/types';
@@ -148,4 +149,21 @@ export async function setupSensorOnly(): Promise<void> {
     }
   }
   setStepPrefs({ setupDone: true, sensorOnly: true });
+}
+
+/**
+ * Guarda los pasos que manda un Atajo desde la app Salud (ver healthLink.ts).
+ * Cuentan como datos de Salud; si el sensor tiene más ese día, se queda el mayor.
+ */
+export async function importHealthLinkDays(days: readonly HealthLinkDay[]): Promise<number> {
+  const repos = getRepositories();
+  const profile = await repos.profile.get();
+  if (!profile) throw new Error('Primero completa tu perfil');
+  const changed = await repos.stepDays.saveDays(
+    days.map((d) => ({ localDate: d.localDate, steps: d.steps, source: 'healthkit' as const })),
+    { sex: profile.sex, heightCm: profile.heightCm, weightKg: profile.weightKg, stepGoal: profile.stepGoal, today: todayLocalDate() },
+  );
+  setStepPrefs({ setupDone: true });
+  setLastHealthLink({ at: Date.now(), days: days.length, lastDate: days[days.length - 1]?.localDate ?? null });
+  return changed;
 }

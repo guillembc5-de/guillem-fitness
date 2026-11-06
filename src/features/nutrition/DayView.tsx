@@ -8,8 +8,10 @@ import { formatNumber, formatSigned } from '@/domain/format';
 import type { LocalDate } from '@/domain/localDay';
 import { dailyBalance, itemTotals, sumTotals } from '@/domain/nutrition';
 import type { Meal } from '@/domain/nutritionTypes';
+import { workoutsKcal } from '@/domain/exerciseKcal';
 import { targetsForProfile, useProfile } from '@/features/profile/queries';
 import { useStepDays } from '@/features/steps/queries';
+import { useWorkouts } from '@/features/workout/queries';
 
 import { MEAL_LABELS, MEAL_ORDER } from './labels';
 import { useMealsByDate, usePendingPhotos } from './queries';
@@ -28,6 +30,7 @@ export function DayView({ date, title, headerRight, showPending = false }: Props
   const profile = useProfile();
   const meals = useMealsByDate(date);
   const steps = useStepDays(date, date);
+  const workouts = useWorkouts();
   const pending = usePendingPhotos();
   const insets = useSafeAreaInsets();
   const { open } = useAddMeal(date);
@@ -37,8 +40,8 @@ export function DayView({ date, title, headerRight, showPending = false }: Props
 
   const targets = targetsForProfile(profile.data);
   const totals = sumTotals((meals.data ?? []).flatMap((m) => m.items.map(itemTotals)));
-  const burned = steps.data?.[0]?.kcal ?? 0;
-  const balance = dailyBalance(targets.target, totals.kcal, burned);
+  const dayWorkouts = (workouts.data ?? []).filter((w) => w.localDate === date);
+  const balance = dailyBalance(targets.target, totals.kcal, steps.data?.[0]?.kcal ?? 0, workoutsKcal(dayWorkouts, profile.data.weightKg));
   const over = balance.remaining < 0;
   const pendingCount = showPending ? (pending.data?.length ?? 0) : 0;
 
@@ -64,7 +67,10 @@ export function DayView({ date, title, headerRight, showPending = false }: Props
           <View style={styles.breakdown}>
             <Line label="Objetivo" value={formatNumber(balance.target)} />
             <Line label="Comido" value={formatSigned(balance.eaten)} color="success" />
-            <Line label="Pasos" value={formatSigned(-balance.burned)} color="accentText" />
+            <Line label="Pasos" value={formatSigned(-balance.steps)} color="accentText" />
+            {dayWorkouts.length > 0 ? (
+              <Line label={dayWorkouts.length === 1 ? 'Entreno' : `Entrenos (${dayWorkouts.length})`} value={formatSigned(-balance.workouts)} color="accentText" />
+            ) : null}
           </View>
         </Card>
 

@@ -109,11 +109,14 @@ function AppNavigator() {
         <Stack.Screen name="rutina-editor" options={{ ...stackScreenOptions, presentation: 'modal', headerShown: true, title: 'Rutina' }} />
         <Stack.Screen
           name="elegir-ejercicio"
-          options={{ ...stackScreenOptions, presentation: 'modal', headerShown: true, title: 'Añadir ejercicios' }}
+          options={{ ...stackScreenOptions, presentation: 'modal', headerShown: true, title: 'Ejercicios' }}
         />
         <Stack.Screen name="ejercicio-editor" options={{ ...stackScreenOptions, presentation: 'modal', headerShown: true, title: 'Ejercicio' }} />
         <Stack.Screen name="resumen-entreno/[id]" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         <Stack.Screen name="comida" options={{ ...stackScreenOptions, presentation: 'modal', headerShown: true, title: 'Comida' }} />
+        <Stack.Screen name="discos" options={{ ...stackScreenOptions, presentation: 'modal', headerShown: true, title: 'Calculadora de discos' }} />
+        <Stack.Screen name="editar-entreno/[id]" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
+        <Stack.Screen name="salud" options={{ presentation: 'transparentModal', animation: 'fade' }} />
       </Stack.Protected>
       <Stack.Protected guard={!onboarded}>
         <Stack.Screen name="onboarding" />

@@ -3,7 +3,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText, Button, Card, ErrorState, LineChart, LoadingState, Screen, SectionHeader, spacing } from '@/design';
 import { formatDuration, formatNumber, toDisplayWeight } from '@/domain/format';
+import { setNumbers } from '@/domain/workout';
 import { useProfile } from '@/features/profile/queries';
+import { SET_TYPE_COLORS } from '@/features/workout/components';
+import { setLabel } from '@/features/workout/labels';
 import { formatSetShort, formatShortDate } from '@/features/workout/format';
 import { useRoutine, useWorkouts } from '@/features/workout/queries';
 import { useStartWorkoutFlow } from '@/features/workout/useStartWorkoutFlow';
@@ -63,7 +66,7 @@ export default function RoutineDetailScreen() {
 
       <SectionHeader title={`Ejercicios (${r.exercises.length})`} />
       {r.exercises.map((e) => {
-        let normal = 0;
+        const numbers = setNumbers(e.sets);
         return (
           <Card key={e.id} style={styles.exercise}>
             <Pressable
@@ -76,12 +79,16 @@ export default function RoutineDetailScreen() {
             <AppText variant="caption" color="textSecondary">
               ⏱ Descanso {formatDuration(e.restSeconds ?? e.exercise.defaultRestSeconds ?? defaultRest)}
             </AppText>
-            {e.sets.map((s) => {
-              if (s.setType === 'normal') normal += 1;
+            {e.notes ? (
+              <AppText variant="caption" color="textSecondary">
+                {e.notes}
+              </AppText>
+            ) : null}
+            {e.sets.map((s, si) => {
               return (
                 <View key={s.id} style={styles.setLine}>
-                  <AppText variant="number" color={s.setType === 'warmup' ? 'warmup' : 'textSecondary'} style={styles.setNum}>
-                    {s.setType === 'warmup' ? 'W' : String(normal)}
+                  <AppText variant="number" color={s.setType === 'normal' ? 'textSecondary' : SET_TYPE_COLORS[s.setType]} style={styles.setNum}>
+                    {setLabel(s.setType, numbers[si] ?? 0)}
                   </AppText>
                   <AppText variant="number">
                     {formatSetShort(e.exercise.trackingType, { weightKg: s.targetWeightKg, reps: s.targetReps, durationS: s.targetDurationS }, unit)}

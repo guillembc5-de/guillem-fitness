@@ -125,7 +125,7 @@ export default function OnboardingScreen() {
         <>
           <StepTitle
             title="Tu actividad"
-            subtitle="Sin contar lo que caminas: los pasos se cuentan aparte, cada día, para no sumarlos dos veces."
+            subtitle="Tu día a día, sin contar lo que caminas ni el gimnasio: los pasos y los entrenos se restan aparte, cada día, para no sumarlos dos veces."
           />
           <ActivityPicker value={draft.activityLevel} onChange={(activityLevel) => update({ activityLevel })} />
         </>

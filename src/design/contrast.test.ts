@@ -23,6 +23,7 @@ const TEXTS = {
   accentText: colors.accentText,
   success: colors.success,
   warmup: colors.warmup,
+  info: colors.info,
 };
 
 describe('contraste AA (4,5:1) de todo el texto', () => {

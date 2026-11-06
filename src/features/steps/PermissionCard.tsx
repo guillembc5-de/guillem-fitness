@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { Linking, StyleSheet, View } from 'react-native';
 
 import { AppText, Button, Card, Icon, spacing } from '@/design';
@@ -48,7 +49,7 @@ const MESSAGES: Partial<Record<SourceReason, { title: string; body: string }>> =
   },
   health_unavailable: {
     title: `${HEALTH_APP_NAME} no está disponible`,
-    body: 'Esta instalación no puede leer Salud (por ejemplo, si se compiló sin HealthKit). Uso el sensor del móvil: solo recupera 7 días, pero la app guarda cada día.',
+    body: 'Esta instalación no puede leer Salud directamente (pasa a menudo con un Apple ID gratuito). Uso el sensor del móvil, que solo recupera 7 días; la app guarda cada día. Para traer los pasos de Salud (y del Apple Watch), conéctala con un Atajo.',
   },
   no_source: {
     title: 'No puedo contar tus pasos',
@@ -95,6 +96,9 @@ export function PermissionBanner({ reason, detail }: { reason: SourceReason; det
           style={styles.flex}
         />
       </View>
+      {reason === 'health_unavailable' ? (
+        <Button title="Conectar Salud con Atajos" icon="heart-outline" compact onPress={() => router.push('/perfil/salud')} />
+      ) : null}
       {reason === 'health_unavailable' ? (
         <Button
           title="Usar solo el sensor y ocultar este aviso"

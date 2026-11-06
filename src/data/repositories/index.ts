@@ -2,6 +2,7 @@ import { db } from '../db/client';
 import type { Repositories } from './interfaces';
 import { SqliteDataRepository } from './sqlite/dataRepository';
 import { SqliteExerciseRepository } from './sqlite/exerciseRepository';
+import { SqliteFoodMemoryRepository } from './sqlite/foodMemoryRepository';
 import { SqliteMealRepository, SqlitePendingPhotoRepository } from './sqlite/mealRepository';
 import { SqliteProfileRepository } from './sqlite/profileRepository';
 import { SqliteRoutineRepository } from './sqlite/routineRepository';
@@ -26,6 +27,7 @@ export function getRepositories(): Repositories {
     stepDays: new SqliteStepDayRepository(db),
     meals: new SqliteMealRepository(db),
     pendingPhotos: new SqlitePendingPhotoRepository(db),
+    foodMemory: new SqliteFoodMemoryRepository(db),
   };
   return instance;
 }

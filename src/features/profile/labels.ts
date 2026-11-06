@@ -6,11 +6,11 @@ export const SEX_LABELS: Record<Sex, string> = {
 };
 
 export const ACTIVITY_LABELS: Record<ActivityLevel, { title: string; description: string }> = {
-  sedentary: { title: 'Sedentario', description: 'Trabajo sentado y sin entreno.' },
-  light: { title: 'Ligero', description: 'Gimnasio 1–4 días por semana.' },
-  moderate: { title: 'Moderado', description: 'Gimnasio 5–6 días o deporte intenso.' },
-  high: { title: 'Alto', description: 'Entreno diario intenso.' },
-  very_high: { title: 'Muy alto', description: 'Trabajo físico y entreno diario.' },
+  sedentary: { title: 'Sentado casi todo el día', description: 'Oficina, estudio, conducir.' },
+  light: { title: 'De pie a ratos', description: 'Clases, tareas de casa, algo de movimiento.' },
+  moderate: { title: 'De pie casi todo el día', description: 'Hostelería, tienda, enfermería.' },
+  high: { title: 'Trabajo físico', description: 'Almacén, reparto, mantenimiento.' },
+  very_high: { title: 'Trabajo físico duro', description: 'Construcción, campo, cargar peso.' },
 };
 
 export const GOAL_LABELS: Record<Goal, string> = {

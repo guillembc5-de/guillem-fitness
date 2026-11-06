@@ -43,7 +43,22 @@ export const TRACKING_LABELS: Record<TrackingType, string> = {
 export const SET_TYPE_LABELS: Record<SetType, string> = {
   normal: 'Normal',
   warmup: 'Calentamiento',
+  dropset: 'Drop set',
+  failure: 'Al fallo',
 };
+
+/** Letra que sustituye al número de serie (las normales llevan número). */
+export const SET_TYPE_LETTERS: Record<SetType, string | null> = {
+  normal: null,
+  warmup: 'W',
+  dropset: 'D',
+  failure: 'F',
+};
+
+/** Texto de la serie: «1», «2»… o su letra. */
+export function setLabel(setType: SetType, number: number): string {
+  return SET_TYPE_LETTERS[setType] ?? String(number);
+}
 
 /** Etiqueta corta de la columna de peso según el tipo de ejercicio. */
 export function weightColumnLabel(tracking: TrackingType): string | null {

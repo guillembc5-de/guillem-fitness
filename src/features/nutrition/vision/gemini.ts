@@ -169,11 +169,15 @@ export function createGeminiProvider(apiKey: string, model: string): NutritionVi
   return {
     name: 'Gemini',
 
-    async analyze(jpegBase64: string): Promise<FoodAnalysis> {
+    async analyze(jpegBase64: string, hints?: string): Promise<FoodAnalysis> {
       const body = await generate(
         [
           { inlineData: { mimeType: 'image/jpeg', data: jpegBase64 } },
-          { text: `${FOOD_PROMPT}\nResponde SOLO con un JSON con las claves food_detected e items (name, grams, kcal, protein_g, carbs_g, fat_g).` },
+          {
+            text: [FOOD_PROMPT, hints, 'Responde SOLO con un JSON con las claves food_detected e items (name, grams, kcal, protein_g, carbs_g, fat_g).']
+              .filter(Boolean)
+              .join('\n\n'),
+          },
         ],
         true,
       );

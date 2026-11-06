@@ -69,4 +69,8 @@ describe('balance del día', () => {
   it('negativo si te pasas', () => {
     expect(dailyBalance(2000, 2400, 100).remaining).toBe(-300);
   });
+  it('los entrenos también restan, aparte de los pasos', () => {
+    const b = dailyBalance(2250, 1850, 260, 300);
+    expect(b).toMatchObject({ steps: 260, workouts: 300, burned: 560, remaining: 960, net: 1290 });
+  });
 });

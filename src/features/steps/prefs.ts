@@ -23,3 +23,26 @@ export function setStepPrefs(prefs: Partial<StepPrefs>): void {
   if (prefs.setupDone !== undefined) Storage.setItemSync(KEYS.setupDone, prefs.setupDone ? '1' : '0');
   if (prefs.sensorOnly !== undefined) Storage.setItemSync(KEYS.sensorOnly, prefs.sensorOnly ? '1' : '0');
 }
+
+/** Última vez que llegaron pasos de Salud por un Atajo (para mostrarlo en Perfil). */
+export type LastHealthLink = { at: number; days: number; lastDate: string | null };
+
+const LAST_LINK_KEY = 'steps.healthLink.last';
+
+export function getLastHealthLink(): LastHealthLink | null {
+  try {
+    const raw = Storage.getItemSync(LAST_LINK_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    const { at, days, lastDate } = parsed as Record<string, unknown>;
+    if (typeof at !== 'number' || typeof days !== 'number') return null;
+    return { at, days, lastDate: typeof lastDate === 'string' ? lastDate : null };
+  } catch {
+    return null;
+  }
+}
+
+export function setLastHealthLink(value: LastHealthLink): void {
+  Storage.setItemSync(LAST_LINK_KEY, JSON.stringify(value));
+}

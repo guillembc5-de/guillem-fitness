@@ -37,14 +37,14 @@ describe('objetivo calórico', () => {
   it('mantener = basal × factor, redondeado a decenas', () => {
     const r = calorieTarget({ ...base, goal: 'maintain', goalRateKgWeek: 0 });
     expect(r.bmr).toBe(1805);
-    expect(r.tdee).toBe(2482); // 1805 × 1,375 = 2481,875
-    expect(r.target).toBe(2480);
+    expect(r.tdee).toBe(2347); // 1805 × 1,3 = 2346,5 (sin caminar ni gimnasio)
+    expect(r.target).toBe(2350);
     expect(r.floorApplied).toBe(false);
   });
 
   it('perder resta el déficit', () => {
     const r = calorieTarget({ ...base, goal: 'lose', goalRateKgWeek: 0.5 });
-    expect(r.target).toBe(1930); // 2481,875 − 550 = 1931,875
+    expect(r.target).toBe(1800); // 2346,5 − 550 = 1796,5
     expect(r.adjustment).toBe(-550);
   });
 

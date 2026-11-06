@@ -187,6 +187,7 @@ describe('rutinas', () => {
           exerciseId: seedExerciseId('press-banca-barra'),
           restSeconds: 120,
           notes: null,
+          supersetId: null,
           sets: [{ setType: 'normal', targetWeightKg: 80, targetReps: 8, targetDurationS: null }],
         },
       ],

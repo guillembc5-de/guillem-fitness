@@ -1,15 +1,16 @@
 import type { ActivityLevel, Goal, Sex } from './types';
 
 /**
- * Factores de actividad SIN contar caminar: las kcal de los pasos se restan
- * aparte en el contador de calorías, así que incluirlas aquí las contaría dos veces.
+ * Factores de actividad de tu día a día SIN contar caminar ni el gimnasio:
+ * las kcal de los pasos y de cada entreno se restan aparte en el contador de
+ * calorías, así que incluirlas aquí las contaría dos veces.
  */
 export const ACTIVITY_FACTORS: Record<ActivityLevel, number> = {
   sedentary: 1.2,
-  light: 1.375,
-  moderate: 1.55,
-  high: 1.725,
-  very_high: 1.9,
+  light: 1.3,
+  moderate: 1.4,
+  high: 1.55,
+  very_high: 1.7,
 };
 
 /** kcal aproximadas por kg de grasa corporal. */
@@ -42,7 +43,7 @@ export type CalorieTargetInput = BmrInput & {
 
 export type CalorieTarget = {
   bmr: number;
-  /** Gasto diario sin caminar. */
+  /** Gasto diario sin caminar ni entrenar. */
   tdee: number;
   /** Déficit (negativo) o superávit (positivo) diario por el objetivo. */
   adjustment: number;

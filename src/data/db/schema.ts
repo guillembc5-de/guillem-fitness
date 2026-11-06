@@ -66,11 +66,20 @@ export const exercise = sqliteTable(
   (t) => [index('exercise_search_idx').on(t.searchName), index('exercise_muscle_idx').on(t.muscleGroup)],
 );
 
+/** Carpetas para agrupar rutinas. */
+export const routineFolder = sqliteTable('routine_folder', {
+  ...meta(),
+  name: text('name').notNull(),
+  position: integer('position').notNull(),
+});
+
 export const routine = sqliteTable('routine', {
   ...meta(),
   name: text('name').notNull(),
   position: integer('position').notNull(),
   notes: text('notes'),
+  /** null = sin carpeta. */
+  folderId: text('folder_id'),
 });
 
 export const routineExercise = sqliteTable(
@@ -87,6 +96,8 @@ export const routineExercise = sqliteTable(
     /** Si es null se usa el del ejercicio y, si tampoco, el del perfil. */
     restSeconds: integer('rest_seconds'),
     notes: text('notes'),
+    /** Ejercicios con el mismo valor forman una superserie. */
+    supersetId: text('superset_id'),
   },
   (t) => [index('routine_exercise_routine_idx').on(t.routineId)],
 );
@@ -141,6 +152,8 @@ export const workoutExercise = sqliteTable(
     position: integer('position').notNull(),
     restSeconds: integer('rest_seconds').notNull(),
     notes: text('notes'),
+    /** Ejercicios con el mismo valor forman una superserie. */
+    supersetId: text('superset_id'),
   },
   (t) => [index('workout_exercise_workout_idx').on(t.workoutId), index('workout_exercise_exercise_idx').on(t.exerciseId)],
 );
@@ -157,6 +170,8 @@ export const workoutSet = sqliteTable(
     weightKg: real('weight_kg'),
     reps: integer('reps'),
     durationS: integer('duration_s'),
+    /** Esfuerzo percibido (6–10), opcional. */
+    rpe: real('rpe'),
     /** null = serie sin completar. */
     completedAt: integer('completed_at'),
   },
@@ -224,3 +239,32 @@ export const pendingPhoto = sqliteTable('pending_photo', {
   attempts: integer('attempts').notNull().default(0),
   lastError: text('last_error'),
 });
+
+/**
+ * Lo que la app aprende de tus comidas: los valores que confirmas o corriges
+ * y cuánto se desvía la IA al estimar raciones. Mejora las siguientes fotos.
+ */
+export const foodMemory = sqliteTable(
+  'food_memory',
+  {
+    ...meta(),
+    name: text('name').notNull(),
+    /** Nombre normalizado (sin tildes ni mayúsculas): una fila por alimento. */
+    searchName: text('search_name').notNull(),
+    /** JSON: string[] con otros nombres normalizados que la IA usó para este alimento. */
+    aliases: text('aliases').notNull().default('[]'),
+    /** Última ración confirmada. */
+    grams: real('grams').notNull(),
+    kcalPer100g: real('kcal_per_100g').notNull(),
+    proteinPer100g: real('protein_per_100g').notNull(),
+    carbsPer100g: real('carbs_per_100g').notNull(),
+    fatPer100g: real('fat_per_100g').notNull(),
+    timesConfirmed: integer('times_confirmed').notNull(),
+    /** Suma de gramos que estimó la IA y de los que confirmaste, para calibrar raciones. */
+    aiGramsTotal: real('ai_grams_total').notNull().default(0),
+    finalGramsTotal: real('final_grams_total').notNull().default(0),
+    aiSamples: integer('ai_samples').notNull().default(0),
+    lastUsedAt: integer('last_used_at').notNull(),
+  },
+  (t) => [uniqueIndex('food_memory_search_idx').on(t.searchName)],
+);

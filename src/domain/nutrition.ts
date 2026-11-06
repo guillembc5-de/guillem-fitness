@@ -86,15 +86,21 @@ export function mealTypeForTime(ms: number): MealType {
 export type DailyBalance = {
   target: number;
   eaten: number;
+  /** kcal quemadas caminando. */
+  steps: number;
+  /** kcal quemadas en los entrenos. */
+  workouts: number;
+  /** Total quemado: pasos + entrenos. */
   burned: number;
-  /** Lo que queda: objetivo − comido + quemado por pasos. Negativo = te has pasado. */
+  /** Lo que queda: objetivo − comido + quemado. Negativo = te has pasado. */
   remaining: number;
   /** Neto del día: comido − quemado. */
   net: number;
 };
 
-/** Balance del día: lo comido suma (verde), lo quemado caminando resta (rojo). */
-export function dailyBalance(target: number, eaten: number, burned: number): DailyBalance {
+/** Balance del día: lo comido suma (verde); lo quemado caminando y entrenando resta (rojo). */
+export function dailyBalance(target: number, eaten: number, steps: number, workouts = 0): DailyBalance {
+  const burned = steps + workouts;
   const net = eaten - burned;
-  return { target, eaten, burned, net, remaining: target - net };
+  return { target, eaten, steps, workouts, burned, net, remaining: target - net };
 }

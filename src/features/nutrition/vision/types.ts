@@ -99,8 +99,12 @@ export const VISION_ERROR_TEXT: Record<VisionErrorKind, string> = {
 /** Interfaz común: Gemini y Claude son intercambiables. */
 export interface NutritionVisionProvider {
   readonly name: string;
-  /** Analiza una foto JPEG en base64. Lanza VisionError. */
-  analyze(jpegBase64: string): Promise<FoodAnalysis>;
+  /**
+   * Analiza una foto JPEG en base64. `hints`: tus alimentos habituales con sus
+   * valores confirmados, para que la estimación se parezca a lo que sueles comer.
+   * Lanza VisionError.
+   */
+  analyze(jpegBase64: string, hints?: string): Promise<FoodAnalysis>;
   /** Comprueba la clave y el modelo con una llamada ligera. Lanza VisionError. */
   testConnection(): Promise<void>;
 }

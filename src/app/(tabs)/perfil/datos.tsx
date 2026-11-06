@@ -71,7 +71,7 @@ function DatosForm({ profile }: { profile: Profile }) {
       <SectionHeader title="Cuerpo" />
       <BodyFields draft={draft} onChange={update} errors={errors} />
 
-      <SectionHeader title="Actividad (sin contar caminar)" />
+      <SectionHeader title="Tu día a día (sin caminar ni gimnasio)" />
       <ActivityPicker value={draft.activityLevel} onChange={(activityLevel) => update({ activityLevel })} />
 
       <SectionHeader title="Objetivos" />

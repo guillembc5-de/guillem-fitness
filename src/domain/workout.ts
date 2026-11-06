@@ -19,11 +19,12 @@ export function epley1RM(weightKg: number, reps: number): number {
 }
 
 /**
- * Serie que cuenta para volumen y récords: completada, normal (no
- * calentamiento) y con al menos 1 repetición.
+ * Serie que cuenta para volumen y récords: completada, que no sea de
+ * calentamiento (las normales, drop sets y al fallo sí cuentan) y con al
+ * menos 1 repetición.
  */
 export function isWorkingSet(set: SetLike): boolean {
-  return set.completedAt !== null && set.setType === 'normal' && (set.reps ?? 0) >= 1;
+  return set.completedAt !== null && set.setType !== 'warmup' && (set.reps ?? 0) >= 1;
 }
 
 /** Volumen de una serie: peso × reps (0 si no hay peso). */
@@ -72,12 +73,13 @@ export function computeBests(sets: readonly SetLike[]): ExerciseBests {
   return bests;
 }
 
-export type RecordKind = 'weight' | 'e1rm' | 'volume';
+export type RecordKind = 'weight' | 'e1rm' | 'volume' | 'reps';
 
 export const RECORD_LABELS: Record<RecordKind, string> = {
   weight: 'Peso máximo',
   e1rm: '1RM estimado',
   volume: 'Volumen en una serie',
+  reps: 'Más repeticiones',
 };
 
 /** Margen para no marcar récords por errores de redondeo. */
@@ -98,6 +100,8 @@ export function recordsForSet(set: SetLike, before: ExerciseBests): RecordKind[]
   if (before.best1RM !== null && e1rm > before.best1RM + EPSILON) kinds.push('e1rm');
   const volume = weight * reps;
   if (before.bestSetVolume !== null && volume > before.bestSetVolume + EPSILON) kinds.push('volume');
+  // Ejercicios sin peso (dominadas, abdominales): el récord es hacer más repeticiones.
+  if (weight === 0 && before.maxReps !== null && reps > before.maxReps) kinds.push('reps');
   return kinds;
 }
 
@@ -156,7 +160,7 @@ export function sessionPoints(sets: readonly SessionSet[]): SessionPoint[] {
   return points.sort((a, b) => a.startedAt - b.startedAt);
 }
 
-/** Número visible de cada serie: 1, 2, 3… para las normales y 0 (se muestra «W») para calentamientos. */
+/** Número visible de cada serie: 1, 2, 3… para las normales y 0 para el resto (se muestra W, D o F). */
 export function setNumbers(sets: readonly { setType: SetType }[]): number[] {
   let normal = 0;
   return sets.map((s) => (s.setType === 'normal' ? ++normal : 0));
@@ -171,9 +175,9 @@ export function matchPreviousSets<T extends { setType: SetType }, P extends { se
   current: readonly T[],
   previous: readonly P[],
 ): (P | null)[] {
-  const prevByType: Record<SetType, P[]> = { normal: [], warmup: [] };
+  const prevByType: Record<SetType, P[]> = { normal: [], warmup: [], dropset: [], failure: [] };
   for (const p of previous) prevByType[p.setType].push(p);
-  const seen: Record<SetType, number> = { normal: 0, warmup: 0 };
+  const seen: Record<SetType, number> = { normal: 0, warmup: 0, dropset: 0, failure: 0 };
   return current.map((s) => {
     const index = seen[s.setType]++;
     return prevByType[s.setType][index] ?? null;

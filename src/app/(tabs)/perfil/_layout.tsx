@@ -8,6 +8,8 @@ export default function PerfilLayout() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="datos" options={{ title: 'Datos y objetivos' }} />
       <Stack.Screen name="ia" options={{ title: 'Análisis de fotos' }} />
+      <Stack.Screen name="entreno" options={{ title: 'Entreno' }} />
+      <Stack.Screen name="salud" options={{ title: 'Salud con Atajos' }} />
       <Stack.Screen name="datos-app" options={{ title: 'Tus datos' }} />
     </Stack>
   );

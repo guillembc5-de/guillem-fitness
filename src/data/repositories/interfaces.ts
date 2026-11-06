@@ -1,6 +1,7 @@
 import type { BackupFile, ImportResult } from '@/data/backup/backup';
 import type { DemoCounts } from '@/data/seed/demoData';
 import type { StepSource } from '@/domain/enums';
+import type { FoodMemory, LearnEntry } from '@/domain/foodMemory';
 import type { LocalDate } from '@/domain/localDay';
 import type { DaySummary, Meal, MealDraft, PendingPhoto, PendingPhotoInput, RecentFood } from '@/domain/nutritionTypes';
 import type { IncomingStepDay, StepContext, StepDay } from '@/domain/stepTypes';
@@ -10,11 +11,14 @@ import type {
   Exercise,
   ExerciseHistorySet,
   ExerciseInput,
+  MuscleSetCount,
   RoutineDetail,
   RoutineDraft,
+  RoutineFolder,
   RoutineSummary,
   SetPatch,
   WorkoutDetail,
+  WorkoutDetailsPatch,
   WorkoutSet,
   WorkoutSummary,
 } from '@/domain/workoutTypes';
@@ -49,17 +53,29 @@ export interface ExerciseRepository {
 export interface RoutineRepository {
   list(): Promise<RoutineSummary[]>;
   get(id: string): Promise<RoutineDetail | null>;
-  /** Crea (id null) o sustituye el contenido de una rutina. Devuelve su id. */
-  save(id: string | null, draft: RoutineDraft): Promise<string>;
+  /** Crea (id null, en la carpeta indicada) o sustituye el contenido de una rutina. Devuelve su id. */
+  save(id: string | null, draft: RoutineDraft, folderId?: string | null): Promise<string>;
   duplicate(id: string): Promise<string>;
   softDelete(id: string): Promise<void>;
   reorder(orderedIds: readonly string[]): Promise<void>;
+  listFolders(): Promise<RoutineFolder[]>;
+  createFolder(name: string): Promise<string>;
+  renameFolder(id: string, name: string): Promise<void>;
+  /** Borra la carpeta; sus rutinas pasan a «sin carpeta». */
+  deleteFolder(id: string): Promise<void>;
+  moveToFolder(routineId: string, folderId: string | null): Promise<void>;
+  /** Guarda un entreno como rutina (actualiza la rutina indicada o crea una nueva). Devuelve su id. */
+  saveFromWorkout(workoutId: string, routineId: string | null, name: string): Promise<string>;
 }
+
+/** De dónde sale «anterior»: la última vez en cualquier entreno o en esta misma rutina. */
+export type PreviousFrom = 'any' | 'routine';
 
 export type StartWorkoutParams = {
   routineId: string | null;
   name: string;
   defaultRestSeconds: number;
+  previousFrom?: PreviousFrom;
 };
 
 export interface WorkoutRepository {
@@ -70,10 +86,21 @@ export interface WorkoutRepository {
   list(): Promise<WorkoutSummary[]>;
   /** Empieza un entreno (vacío o desde una rutina). Devuelve su id. */
   start(params: StartWorkoutParams): Promise<string>;
+  /** Empieza un entreno nuevo copiando uno anterior. Devuelve su id. */
+  repeat(workoutId: string): Promise<string>;
   addExercise(workoutId: string, exerciseId: string, restSeconds: number): Promise<void>;
   removeExercise(workoutExerciseId: string): Promise<void>;
   setExerciseRest(workoutExerciseId: string, seconds: number): Promise<void>;
+  setExerciseNotes(workoutExerciseId: string, notes: string | null): Promise<void>;
+  moveExercise(workoutExerciseId: string, delta: -1 | 1): Promise<void>;
+  /** Cambia el ejercicio conservando las series (las pendientes se rellenan con «anterior»). */
+  replaceExercise(workoutExerciseId: string, exerciseId: string): Promise<void>;
+  /** Une el ejercicio a la superserie de otro (o crea una nueva con los dos). */
+  joinSuperset(workoutExerciseId: string, withWorkoutExerciseId: string): Promise<void>;
+  leaveSuperset(workoutExerciseId: string): Promise<void>;
   addSet(workoutExerciseId: string): Promise<void>;
+  /** Añade series de calentamiento delante de las que ya hay. */
+  addWarmupSets(workoutExerciseId: string, sets: readonly { weightKg: number; reps: number }[]): Promise<void>;
   removeSet(setId: string): Promise<void>;
   updateSet(setId: string, patch: SetPatch): Promise<void>;
   completeSet(setId: string, values: SetPatch): Promise<void>;
@@ -81,9 +108,15 @@ export interface WorkoutRepository {
   setRest(workoutId: string, restEndsAt: number | null, notificationId: string | null): Promise<void>;
   /** Termina el entreno: descarta series sin completar y ejercicios vacíos. */
   finish(workoutId: string): Promise<void>;
+  /** Cierra la edición de un entreno terminado (descarta series sin marcar). */
+  saveEdits(workoutId: string): Promise<void>;
+  /** Nombre, nota, fecha y duración de un entreno terminado. */
+  updateDetails(workoutId: string, patch: WorkoutDetailsPatch): Promise<void>;
   softDelete(workoutId: string): Promise<void>;
-  /** Series del último entreno terminado con ese ejercicio («anterior»). */
-  lastSessionSets(exerciseId: string, excludeWorkoutId: string | null): Promise<WorkoutSet[]>;
+  /** Series del último entreno terminado con ese ejercicio («anterior»), opcionalmente de una rutina. */
+  lastSessionSets(exerciseId: string, excludeWorkoutId: string | null, routineId?: string | null): Promise<WorkoutSet[]>;
+  /** Series de trabajo por grupo muscular desde una fecha (estadísticas). */
+  muscleSets(fromMs: number): Promise<MuscleSetCount[]>;
   /**
    * Mejores marcas históricas por ejercicio, sin contar el entreno indicado.
    * Con `beforeStartedAt`, solo cuenta entrenos anteriores a esa fecha
@@ -129,6 +162,14 @@ export interface PendingPhotoRepository {
   resolve(id: string): Promise<void>;
 }
 
+/** Lo que la app aprende de tus comidas para mejorar el análisis de fotos. */
+export interface FoodMemoryRepository {
+  list(): Promise<FoodMemory[]>;
+  learn(entries: readonly LearnEntry[]): Promise<void>;
+  /** Olvida todo lo aprendido. Devuelve cuántos alimentos había. */
+  clear(): Promise<number>;
+}
+
 /** Copias de seguridad y datos de prueba (afectan a todas las tablas). */
 export interface DataRepository {
   exportAll(): Promise<BackupFile>;
@@ -148,4 +189,5 @@ export type Repositories = {
   stepDays: StepDayRepository;
   meals: MealRepository;
   pendingPhotos: PendingPhotoRepository;
+  foodMemory: FoodMemoryRepository;
 };

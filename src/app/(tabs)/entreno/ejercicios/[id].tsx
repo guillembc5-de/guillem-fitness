@@ -18,12 +18,12 @@ import {
   spacing,
 } from '@/design';
 import { formatDuration, formatNumber, formatWeight, toDisplayWeight } from '@/domain/format';
-import { epley1RM, isWorkingSet, sessionPoints, type SessionPoint } from '@/domain/workout';
+import { epley1RM, isWorkingSet, sessionPoints, setNumbers, type SessionPoint } from '@/domain/workout';
 import type { ExerciseHistorySet } from '@/domain/workoutTypes';
 import { useProfile } from '@/features/profile/queries';
-import { REST_CHOICES } from '@/features/workout/components';
+import { REST_CHOICES, SET_TYPE_COLORS } from '@/features/workout/components';
 import { formatSetShort, formatShortDate, formatWorkoutDate } from '@/features/workout/format';
-import { EQUIPMENT_LABELS, MUSCLE_LABELS } from '@/features/workout/labels';
+import { EQUIPMENT_LABELS, MUSCLE_LABELS, setLabel } from '@/features/workout/labels';
 import { useDeleteExercise, useExercise, useExerciseHistory, useSetExerciseRest } from '@/features/workout/queries';
 import { useNow } from '@/lib/useNow';
 
@@ -182,8 +182,8 @@ export default function ExerciseDetailScreen() {
               </View>
               {s.sets.map((set, i) => (
                 <View key={i} style={styles.setLine}>
-                  <AppText variant="number" color={set.setType === 'warmup' ? 'warmup' : 'textSecondary'} style={styles.setNum}>
-                    {set.setType === 'warmup' ? 'W' : String(i + 1 - s.sets.slice(0, i).filter((x) => x.setType === 'warmup').length)}
+                  <AppText variant="number" color={set.setType === 'normal' ? 'textSecondary' : SET_TYPE_COLORS[set.setType]} style={styles.setNum}>
+                    {setLabel(set.setType, setNumbers(s.sets)[i] ?? 0)}
                   </AppText>
                   <AppText variant="number">{formatSetShort(ex.trackingType, set, unit)}</AppText>
                 </View>

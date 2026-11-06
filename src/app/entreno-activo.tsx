@@ -1,3 +1,4 @@
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
@@ -5,33 +6,32 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppText, Button, Card, EmptyState, Icon, LoadingState, colors, radii, showActionSheet, spacing } from '@/design';
-import { formatDuration } from '@/domain/format';
-import { EMPTY_BESTS, recordsInSession, type ExerciseBests } from '@/domain/workout';
-import type { SetPatch, WorkoutDetail, WorkoutExercise, WorkoutSet } from '@/domain/workoutTypes';
+import { AppText, Button, EmptyState, Icon, LoadingState, colors, radii, spacing } from '@/design';
+import { getRepositories } from '@/data/repositories';
+import { formatDuration, formatNumber, toDisplayWeight } from '@/domain/format';
+import { nextInSuperset, restAfterSet, supersetLetters } from '@/domain/supersets';
+import { EMPTY_BESTS, recordsInSession, totalVolume } from '@/domain/workout';
+import { structureChanged } from '@/domain/workoutStats';
 import type { WeightUnit } from '@/domain/types';
+import type { SetPatch, WorkoutDetail, WorkoutExercise } from '@/domain/workoutTypes';
 import { useProfile } from '@/features/profile/queries';
-import { RestLabel, REST_CHOICES } from '@/features/workout/components';
-import {
-  useActiveWorkout,
-  useDeleteWorkout,
-  useFinishWorkout,
-  useHistoryBests,
-  usePreviousSets,
-  useWorkoutActions,
-} from '@/features/workout/queries';
+import { ExerciseBlock } from '@/features/workout/ExerciseBlock';
+import { useActiveWorkout, useDeleteWorkout, useFinishWorkout, useHistoryBests, usePreviousSets, useSaveWorkoutAsRoutine, useWorkoutActions } from '@/features/workout/queries';
 import {
   cancelRestNotification,
   getNotificationPermission,
+  hapticRecord,
   hapticRestDone,
   hapticSetDone,
   restRemainingSeconds,
   scheduleRestEnd,
 } from '@/features/workout/restTimer';
 import { useRestUi } from '@/features/workout/restUiStore';
-import { SetHeader, SetRow } from '@/features/workout/SetRow';
-import { matchPreviousSets, setNumbers } from '@/domain/workout';
+import { recordKindsText } from '@/features/workout/sessionRecords';
+import { useWorkoutSettings } from '@/features/workout/settings';
 import { useNow } from '@/lib/useNow';
+
+const KEEP_AWAKE_TAG = 'entreno';
 
 export default function ActiveWorkoutScreen() {
   const active = useActiveWorkout();
@@ -52,15 +52,42 @@ function ActiveWorkoutView({ workout, unit }: { workout: WorkoutDetail; unit: We
   const actions = useWorkoutActions();
   const finish = useFinishWorkout();
   const discard = useDeleteWorkout();
+  const saveAsRoutine = useSaveWorkoutAsRoutine();
+  const settings = useWorkoutSettings();
   const nowMs = useNow(500);
   const [notifDenied, setNotifDenied] = useState(false);
+  const [banner, setBanner] = useState<{ text: string; tone: 'record' | 'info' } | null>(null);
+  const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const exerciseIds = useMemo(() => [...new Set(workout.exercises.map((e) => e.exerciseId))], [workout.exercises]);
-  const previous = usePreviousSets(workout.id, exerciseIds);
+  const previous = usePreviousSets(workout.id, exerciseIds, settings.previousFrom === 'routine' ? workout.routineId : null);
   const bests = useHistoryBests(workout.id, exerciseIds);
+  const letters = useMemo(() => supersetLetters(workout.exercises), [workout.exercises]);
 
   useEffect(() => {
     void getNotificationPermission().then((p) => setNotifDenied(p === 'denied'));
+  }, []);
+
+  // Pantalla encendida mientras entrenas (se puede desactivar en Perfil → Entreno).
+  useEffect(() => {
+    if (!settings.keepAwake) return undefined;
+    void activateKeepAwakeAsync(KEEP_AWAKE_TAG);
+    return () => {
+      void deactivateKeepAwake(KEEP_AWAKE_TAG);
+    };
+  }, [settings.keepAwake]);
+
+  useEffect(
+    () => () => {
+      if (bannerTimer.current) clearTimeout(bannerTimer.current);
+    },
+    [],
+  );
+
+  const showBanner = useCallback((text: string, tone: 'record' | 'info') => {
+    if (bannerTimer.current) clearTimeout(bannerTimer.current);
+    setBanner({ text, tone });
+    bannerTimer.current = setTimeout(() => setBanner(null), 3500);
   }, []);
 
   // ----- Descanso -----
@@ -106,30 +133,37 @@ function ActiveWorkoutView({ workout, unit }: { workout: WorkoutDetail; unit: We
 
   // ----- Series -----
   const onComplete = useCallback(
-    (we: WorkoutExercise) => (setId: string, values: SetPatch) => {
+    (we: WorkoutExercise, setId: string, values: SetPatch) => {
       hapticSetDone();
       actions.completeSet.mutate({ setId, values });
-      void startRest(we.restSeconds, we.exerciseNameSnapshot);
+
+      // Aviso de récord en directo.
+      if (settings.prAlerts) {
+        const index = we.sets.findIndex((s) => s.id === setId);
+        const hypothetical = we.sets.map((s) => (s.id === setId ? { ...s, ...values, completedAt: Date.now() } : s));
+        const kinds = recordsInSession(hypothetical, bests.data?.[we.exerciseId] ?? EMPTY_BESTS)[index] ?? [];
+        if (kinds.length > 0) {
+          hapticRecord();
+          showBanner(`¡Récord! ${we.exerciseNameSnapshot}: ${recordKindsText(kinds)}`, 'record');
+        }
+      }
+
+      // En una superserie no se descansa hasta el último ejercicio del grupo.
+      const rest = restAfterSet(we.id, workout.exercises);
+      const next = nextInSuperset(we.id, workout.exercises);
+      if (rest === null) {
+        if (next) showBanner(`Ahora: ${next.exerciseNameSnapshot}`, 'info');
+        return;
+      }
+      void startRest(rest, next?.exerciseNameSnapshot ?? we.exerciseNameSnapshot);
     },
-    [actions.completeSet, startRest],
-  );
-
-  const onUpdate = useCallback((setId: string, patch: SetPatch) => actions.updateSet.mutate({ setId, patch }), [actions.updateSet]);
-  const onUncomplete = useCallback((setId: string) => actions.uncompleteSet.mutate(setId), [actions.uncompleteSet]);
-
-  const onSetMenu = useCallback(
-    (set: WorkoutSet, number: number) =>
-      showActionSheet(`Serie ${set.setType === 'warmup' ? 'de calentamiento' : number}`, [
-        set.setType === 'normal'
-          ? { label: 'Marcar como calentamiento (W)', onPress: () => actions.updateSet.mutate({ setId: set.id, patch: { setType: 'warmup' } }) }
-          : { label: 'Marcar como serie normal', onPress: () => actions.updateSet.mutate({ setId: set.id, patch: { setType: 'normal' } }) },
-        { label: 'Borrar serie', destructive: true, onPress: () => actions.removeSet.mutate(set.id) },
-      ]),
-    [actions.updateSet, actions.removeSet],
+    [actions.completeSet, bests.data, settings.prAlerts, showBanner, startRest, workout.exercises],
   );
 
   // ----- Terminar / descartar -----
-  const completedSets = workout.exercises.reduce((n, e) => n + e.sets.filter((s) => s.completedAt !== null).length, 0);
+  const allSets = workout.exercises.flatMap((e) => e.sets);
+  const completedSets = allSets.filter((s) => s.completedAt !== null).length;
+  const volume = toDisplayWeight(totalVolume(allSets), unit);
 
   const doDiscard = async () => {
     await cancelRestNotification(workout.restNotificationId);
@@ -142,6 +176,35 @@ function ActiveWorkoutView({ workout, unit }: { workout: WorkoutDetail; unit: We
       { text: 'Descartar', style: 'destructive', onPress: () => void doDiscard() },
     ]);
 
+  const goToSummary = () => router.replace({ pathname: '/resumen-entreno/[id]', params: { id: workout.id } });
+
+  /** Si cambiaste ejercicios o series respecto a la rutina, ofrece guardarlo en ella (como Hevy). */
+  const afterFinish = async () => {
+    const repos = getRepositories();
+    const [routine, done] = await Promise.all([
+      workout.routineId ? repos.routines.get(workout.routineId) : Promise.resolve(null),
+      repos.workouts.get(workout.id),
+    ]);
+    const changed =
+      routine &&
+      done &&
+      structureChanged(
+        routine.exercises.map((e) => ({ exerciseId: e.exercise.id, supersetId: e.supersetId, sets: e.sets })),
+        done.exercises.map((e) => ({ exerciseId: e.exerciseId, supersetId: e.supersetId, sets: e.sets })),
+      );
+    if (!routine || !changed) {
+      goToSummary();
+      return;
+    }
+    Alert.alert(`¿Actualizar «${routine.name}»?`, 'Has cambiado ejercicios o series respecto a la rutina. Puedes guardar este entreno como la nueva versión.', [
+      { text: 'Mantener la rutina', style: 'cancel', onPress: goToSummary },
+      {
+        text: 'Actualizar rutina',
+        onPress: () => saveAsRoutine.mutate({ workoutId: workout.id, routineId: routine.id, name: routine.name }, { onSettled: goToSummary }),
+      },
+    ]);
+  };
+
   const askFinish = () => {
     if (completedSets === 0) {
       Alert.alert('No has completado ninguna serie', 'Marca al menos una serie para guardar el entreno.', [
@@ -150,24 +213,22 @@ function ActiveWorkoutView({ workout, unit }: { workout: WorkoutDetail; unit: We
       ]);
       return;
     }
-    Alert.alert('¿Terminar el entreno?', 'Las series sin marcar no se guardarán.', [
+    const pending = allSets.length - completedSets;
+    Alert.alert('¿Terminar el entreno?', pending > 0 ? `Hay ${pending} ${pending === 1 ? 'serie sin marcar que no se guardará' : 'series sin marcar que no se guardarán'}.` : 'Se guardará en tu historial.', [
       { text: 'Seguir', style: 'cancel' },
       {
         text: 'Terminar',
         onPress: () => {
           void (async () => {
             await cancelRestNotification(workout.restNotificationId);
-            finish.mutate(workout.id, {
-              onSuccess: () => router.replace({ pathname: '/resumen-entreno/[id]', params: { id: workout.id } }),
-            });
+            finish.mutate(workout.id, { onSuccess: () => void afterFinish() });
           })();
         },
       },
     ]);
   };
 
-  const restTotalSec =
-    restUi.endsAt === workout.restEndsAt && restUi.totalMs ? restUi.totalMs / 1000 : Math.max(remaining, 1);
+  const restTotalSec = restUi.endsAt === workout.restEndsAt && restUi.totalMs ? restUi.totalMs / 1000 : Math.max(remaining, 1);
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -179,11 +240,11 @@ function ActiveWorkoutView({ workout, unit }: { workout: WorkoutDetail; unit: We
           <AppText variant="headline" numberOfLines={1} align="center">
             {workout.name}
           </AppText>
-          <AppText variant="number" color="textSecondary" align="center" accessibilityLabel="Tiempo de entreno">
-            {formatDuration((nowMs - workout.startedAt) / 1000)}
+          <AppText variant="caption" color="textSecondary" align="center" style={styles.tabular} accessibilityLabel="Tiempo, volumen y series">
+            {formatDuration((nowMs - workout.startedAt) / 1000)} · {formatNumber(volume)} {unit} · {completedSets} {completedSets === 1 ? 'serie' : 'series'}
           </AppText>
         </View>
-        <Button title="Terminar" compact onPress={askFinish} loading={finish.isPending} />
+        <Button title="Terminar" compact onPress={askFinish} loading={finish.isPending || saveAsRoutine.isPending} />
       </View>
 
       {remaining > 0 ? (
@@ -214,30 +275,36 @@ function ActiveWorkoutView({ workout, unit }: { workout: WorkoutDetail; unit: We
         </Animated.View>
       ) : null}
 
-      <KeyboardAwareScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" bottomOffset={spacing.xl}>
-        {workout.exercises.length === 0 ? (
-          <EmptyState icon="add-circle-outline" title="Entreno vacío" message="Añade el primer ejercicio para empezar." />
-        ) : null}
+      {banner ? (
+        <Animated.View
+          entering={FadeInUp.duration(200)}
+          exiting={FadeOutUp.duration(200)}
+          style={[styles.banner, banner.tone === 'record' ? styles.bannerRecord : styles.bannerInfo]}
+          accessibilityLiveRegion="assertive"
+        >
+          <Icon name={banner.tone === 'record' ? 'trophy' : 'swap-vertical'} size={20} color={banner.tone === 'record' ? 'onAccent' : 'info'} />
+          <AppText variant="bodyStrong" color={banner.tone === 'record' ? 'onAccent' : 'text'} style={styles.flex}>
+            {banner.text}
+          </AppText>
+        </Animated.View>
+      ) : null}
 
-        {workout.exercises.map((we) => (
+      <KeyboardAwareScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" bottomOffset={spacing.xl}>
+        {workout.exercises.length === 0 ? <EmptyState icon="add-circle-outline" title="Entreno vacío" message="Añade el primer ejercicio para empezar." /> : null}
+
+        {workout.exercises.map((we, i) => (
           <ExerciseBlock
             key={we.id}
             we={we}
+            siblings={workout.exercises}
+            index={i}
             unit={unit}
             previous={previous.data?.[we.exerciseId] ?? []}
             bests={bests.data?.[we.exerciseId] ?? EMPTY_BESTS}
-            onComplete={onComplete(we)}
-            onUpdate={onUpdate}
-            onUncomplete={onUncomplete}
-            onSetMenu={onSetMenu}
-            onAddSet={() => actions.addSet.mutate(we.id)}
-            onRest={(seconds) => actions.setExerciseRest.mutate({ workoutExerciseId: we.id, seconds })}
-            onRemove={() =>
-              Alert.alert('¿Quitar el ejercicio?', `Se borrarán sus series de este entreno.`, [
-                { text: 'Cancelar', style: 'cancel' },
-                { text: 'Quitar', style: 'destructive', onPress: () => actions.removeExercise.mutate(we.id) },
-              ])
-            }
+            supersetLetter={we.supersetId ? (letters.get(we.supersetId) ?? null) : null}
+            live
+            actions={actions}
+            onComplete={onComplete}
           />
         ))}
 
@@ -245,7 +312,7 @@ function ActiveWorkoutView({ workout, unit }: { workout: WorkoutDetail; unit: We
           title="Añadir ejercicio"
           icon="add"
           variant="secondary"
-          onPress={() => router.push({ pathname: '/elegir-ejercicio', params: { target: 'workout' } })}
+          onPress={() => router.push({ pathname: '/elegir-ejercicio', params: { target: 'workout', workoutId: workout.id } })}
         />
         <Button title="Descartar entreno" variant="danger" onPress={askDiscard} />
       </KeyboardAwareScrollView>
@@ -253,73 +320,10 @@ function ActiveWorkoutView({ workout, unit }: { workout: WorkoutDetail; unit: We
   );
 }
 
-type BlockProps = {
-  we: WorkoutExercise;
-  unit: WeightUnit;
-  previous: readonly WorkoutSet[];
-  bests: ExerciseBests;
-  onComplete: (setId: string, values: SetPatch) => void;
-  onUpdate: (setId: string, patch: SetPatch) => void;
-  onUncomplete: (setId: string) => void;
-  onSetMenu: (set: WorkoutSet, number: number) => void;
-  onAddSet: () => void;
-  onRest: (seconds: number) => void;
-  onRemove: () => void;
-};
-
-function ExerciseBlock({ we, unit, previous, bests, onComplete, onUpdate, onUncomplete, onSetMenu, onAddSet, onRest, onRemove }: BlockProps) {
-  const matched = matchPreviousSets(we.sets, previous);
-  const records = recordsInSession(we.sets, bests);
-  const numbers = setNumbers(we.sets);
-
-  const openMenu = () =>
-    showActionSheet(we.exerciseNameSnapshot, [
-      { label: `Descanso: ${formatDuration(we.restSeconds)}`, onPress: chooseRest },
-      { label: 'Quitar ejercicio', destructive: true, onPress: onRemove },
-    ]);
-
-  const chooseRest = () =>
-    showActionSheet('Descanso entre series', REST_CHOICES.map((s) => ({ label: formatDuration(s), selected: we.restSeconds === s, onPress: () => onRest(s) })));
-
-  return (
-    <Card style={styles.block} padded={false}>
-      <View style={styles.blockHeader}>
-        <AppText variant="headline" style={styles.flex}>
-          {we.exerciseNameSnapshot}
-        </AppText>
-        <Pressable accessibilityRole="button" accessibilityLabel={`Opciones de ${we.exerciseNameSnapshot}`} onPress={openMenu} style={styles.iconButton}>
-          <Icon name="ellipsis-horizontal" color="textSecondary" />
-        </Pressable>
-      </View>
-      <View style={styles.restLabel}>
-        <RestLabel seconds={we.restSeconds} onPress={chooseRest} />
-      </View>
-      <SetHeader tracking={we.trackingType} unit={unit} />
-      {we.sets.map((s, i) => {
-        return (
-          <SetRow
-            key={s.id}
-            set={s}
-            number={numbers[i] ?? 0}
-            tracking={we.trackingType}
-            unit={unit}
-            previous={matched[i] ?? null}
-            records={records[i] ?? []}
-            onUpdate={onUpdate}
-            onComplete={onComplete}
-            onUncomplete={onUncomplete}
-            onMenu={onSetMenu}
-          />
-        );
-      })}
-      <Button title="Añadir serie" icon="add" variant="ghost" compact onPress={onAddSet} />
-    </Card>
-  );
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
+  tabular: { fontVariant: ['tabular-nums'] },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -343,8 +347,8 @@ const styles = StyleSheet.create({
   restButtons: { flexDirection: 'row', gap: spacing.xxs },
   progressTrack: { height: 6, borderRadius: radii.pill, backgroundColor: colors.surfaceRaised, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: colors.accent, borderRadius: radii.pill },
+  banner: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  bannerRecord: { backgroundColor: colors.accent },
+  bannerInfo: { backgroundColor: colors.infoSoft },
   content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xxl },
-  block: { paddingVertical: spacing.sm, gap: spacing.xxs },
-  blockHeader: { flexDirection: 'row', alignItems: 'center', paddingLeft: spacing.md, paddingRight: spacing.xs },
-  restLabel: { paddingHorizontal: spacing.md },
 });

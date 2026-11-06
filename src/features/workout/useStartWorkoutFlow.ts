@@ -4,11 +4,12 @@ import { Alert } from 'react-native';
 import { getRepositories } from '@/data/repositories';
 import { useProfile } from '@/features/profile/queries';
 
-import { useDeleteWorkout, useStartWorkout } from './queries';
+import { useDeleteWorkout, useRepeatWorkout, useStartWorkout } from './queries';
 import { cancelRestNotification, ensureNotificationPermission } from './restTimer';
+import { getWorkoutSettings } from './settings';
 
 /**
- * Empezar un entreno desde cualquier sitio:
+ * Empezar un entreno desde cualquier sitio (rutina, vacío o repitiendo uno anterior):
  * - si ya hay uno en curso, pregunta si reanudarlo o descartarlo;
  * - pide permiso de notificaciones la primera vez (para avisar del fin del descanso);
  * - abre el entreno activo.
@@ -16,18 +17,18 @@ import { cancelRestNotification, ensureNotificationPermission } from './restTime
 export function useStartWorkoutFlow() {
   const profile = useProfile();
   const start = useStartWorkout();
+  const repeat = useRepeatWorkout();
   const discard = useDeleteWorkout();
 
-  const launch = async (routineId: string | null, name: string) => {
-    await ensureNotificationPermission();
-    await start.mutateAsync({ routineId, name, defaultRestSeconds: profile.data?.defaultRestSeconds ?? 150 });
-    router.push('/entreno-activo');
-  };
-
-  const startWorkout = async (routineId: string | null, name: string) => {
+  const guard = async (launch: () => Promise<unknown>) => {
+    const go = async () => {
+      await ensureNotificationPermission();
+      await launch();
+      router.push('/entreno-activo');
+    };
     const active = await getRepositories().workouts.getActive();
     if (!active) {
-      await launch(routineId, name);
+      await go();
       return;
     }
     Alert.alert('Ya tienes un entreno en curso', `«${active.name}» sigue abierto.`, [
@@ -39,7 +40,7 @@ export function useStartWorkoutFlow() {
           void (async () => {
             await cancelRestNotification(active.restNotificationId);
             await discard.mutateAsync(active.id);
-            await launch(routineId, name);
+            await go();
           })();
         },
       },
@@ -47,5 +48,18 @@ export function useStartWorkoutFlow() {
     ]);
   };
 
-  return { startWorkout, starting: start.isPending };
+  const startWorkout = (routineId: string | null, name: string) =>
+    guard(() =>
+      start.mutateAsync({
+        routineId,
+        name,
+        defaultRestSeconds: profile.data?.defaultRestSeconds ?? 150,
+        previousFrom: getWorkoutSettings().previousFrom,
+      }),
+    );
+
+  /** Empieza un entreno nuevo con los mismos ejercicios y pesos que uno anterior. */
+  const repeatWorkout = (workoutId: string) => guard(() => repeat.mutateAsync(workoutId));
+
+  return { startWorkout, repeatWorkout, starting: start.isPending || repeat.isPending };
 }

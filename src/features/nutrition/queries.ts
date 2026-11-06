@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 
 import { getRepositories } from '@/data/repositories';
 import type { LocalDate } from '@/domain/localDay';
+import type { LearnEntry } from '@/domain/foodMemory';
 import type { MealDraft, PendingPhotoInput } from '@/domain/nutritionTypes';
 
 export const nutritionKeys = {
@@ -10,6 +11,7 @@ export const nutritionKeys = {
   summaries: (from: LocalDate, to: LocalDate) => ['mealSummaries', from, to] as const,
   recent: ['recentFoods'] as const,
   pending: ['pendingPhotos'] as const,
+  memory: ['foodMemory'] as const,
 };
 
 const repos = () => getRepositories();
@@ -59,6 +61,24 @@ export function useSaveMeal() {
       void client.invalidateQueries({ queryKey: nutritionKeys.pending });
     },
   });
+}
+
+/** Lo que la app ha aprendido de tus comidas. */
+export function useFoodMemory() {
+  return useQuery({ queryKey: nutritionKeys.memory, queryFn: () => repos().foodMemory.list() });
+}
+
+export function useLearnFoods() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (entries: readonly LearnEntry[]) => repos().foodMemory.learn(entries),
+    onSuccess: () => client.invalidateQueries({ queryKey: nutritionKeys.memory }),
+  });
+}
+
+export function useClearFoodMemory() {
+  const client = useQueryClient();
+  return useMutation({ mutationFn: () => repos().foodMemory.clear(), onSuccess: () => client.invalidateQueries({ queryKey: nutritionKeys.memory }) });
 }
 
 export function useDeleteMeal() {

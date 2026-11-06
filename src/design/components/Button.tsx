@@ -16,6 +16,8 @@ type Props = {
   /** Botón compacto (44 pt) para cabeceras y filas. */
   compact?: boolean;
   accessibilityHint?: string;
+  /** Si el título no se entiende leído en voz alta (p. ej. «−»). */
+  accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -42,6 +44,7 @@ export function Button({
   loading = false,
   compact = false,
   accessibilityHint,
+  accessibilityLabel,
   style,
 }: Props) {
   const inactive = disabled || loading;
@@ -49,7 +52,7 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={title}
+      accessibilityLabel={accessibilityLabel ?? title}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: inactive, busy: loading }}
       disabled={inactive}

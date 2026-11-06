@@ -12,12 +12,21 @@ export type FoodRow = {
   carbs100: string;
   fat100: string;
   aiEstimated: boolean;
+  /** Lo que propuso la IA antes de tus correcciones (para aprender al guardar). */
+  aiName: string | null;
+  aiGrams: number | null;
+  /** Qué se ajustó con lo aprendido de comidas anteriores. */
+  learned: ('values' | 'portion')[];
 };
 
 let counter = 0;
 const nextKey = () => `f${++counter}`;
 
-export function rowFromDraft(d: FoodDraft | FoodItem | RecentFood, aiEstimated = false): FoodRow {
+export function rowFromDraft(
+  d: FoodDraft | FoodItem | RecentFood,
+  aiEstimated = false,
+  ai: { aiName: string; aiGrams: number; learned: FoodRow['learned'] } | null = null,
+): FoodRow {
   return {
     key: nextKey(),
     name: d.name,
@@ -27,11 +36,14 @@ export function rowFromDraft(d: FoodDraft | FoodItem | RecentFood, aiEstimated =
     carbs100: toInputText(d.carbsPer100g, 1),
     fat100: toInputText(d.fatPer100g, 1),
     aiEstimated: 'aiEstimated' in d ? d.aiEstimated : aiEstimated,
+    aiName: ai?.aiName ?? null,
+    aiGrams: ai?.aiGrams ?? null,
+    learned: ai?.learned ?? [],
   };
 }
 
 export function emptyRow(): FoodRow {
-  return { key: nextKey(), name: '', grams: '', kcal100: '', protein100: '', carbs100: '', fat100: '', aiEstimated: false };
+  return { key: nextKey(), name: '', grams: '', kcal100: '', protein100: '', carbs100: '', fat100: '', aiEstimated: false, aiName: null, aiGrams: null, learned: [] };
 }
 
 /** Convierte la fila en alimento guardable, o null si falta el nombre o los gramos. */

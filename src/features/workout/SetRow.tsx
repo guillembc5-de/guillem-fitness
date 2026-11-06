@@ -1,9 +1,9 @@
-import { memo, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText, Icon, colors, radii, spacing } from '@/design';
 import type { TrackingType } from '@/domain/enums';
-import { fromDisplayWeight, toDisplayWeight } from '@/domain/format';
+import { formatDuration, formatNumber, fromDisplayWeight, toDisplayWeight } from '@/domain/format';
 import { parseDecimal, toInputText } from '@/domain/parseNumber';
 import type { WeightUnit } from '@/domain/types';
 import type { RecordKind } from '@/domain/workout';
@@ -11,7 +11,7 @@ import type { SetPatch, WorkoutSet } from '@/domain/workoutTypes';
 
 import { SetBadge, SetCell } from './components';
 import { formatSetShort } from './format';
-import { hapticWarning } from './restTimer';
+import { hapticSetDone, hapticWarning } from './restTimer';
 
 type Props = {
   set: WorkoutSet;
@@ -20,10 +20,12 @@ type Props = {
   unit: WeightUnit;
   previous: WorkoutSet | null;
   records: readonly RecordKind[];
+  showRpe: boolean;
   onUpdate: (setId: string, patch: SetPatch) => void;
   onComplete: (setId: string, values: SetPatch) => void;
   onUncomplete: (setId: string) => void;
   onMenu: (set: WorkoutSet, number: number) => void;
+  onRpe: (set: WorkoutSet) => void;
 };
 
 function weightText(kg: number | null, unit: WeightUnit): string {
@@ -31,10 +33,10 @@ function weightText(kg: number | null, unit: WeightUnit): string {
 }
 
 /**
- * Fila de una serie en el entreno activo. Los valores se editan en local y
- * se guardan al salir del campo o al marcar la serie (que los guarda todos).
+ * Fila de una serie. Los valores se editan en local y se guardan al salir del
+ * campo o al marcar la serie (que los guarda todos).
  */
-function SetRowImpl({ set, number, tracking, unit, previous, records, onUpdate, onComplete, onUncomplete, onMenu }: Props) {
+function SetRowImpl({ set, number, tracking, unit, previous, records, showRpe, onUpdate, onComplete, onUncomplete, onMenu, onRpe }: Props) {
   const [weight, setWeight] = useState(() => weightText(set.weightKg, unit));
   const [reps, setReps] = useState(() => (set.reps !== null ? String(set.reps) : ''));
   const [duration, setDuration] = useState(() => (set.durationS !== null ? String(set.durationS) : ''));
@@ -125,7 +127,17 @@ function SetRowImpl({ set, number, tracking, unit, previous, records, onUpdate, 
         />
       ) : null}
       {isDuration ? (
-        <SetCell accessibilityLabel={`Segundos serie ${number}`} value={duration} onChangeText={setDuration} onEndEditing={commit} maxDecimals={0} placeholder="seg" />
+        <>
+          <SetCell accessibilityLabel={`Segundos serie ${number}`} value={duration} onChangeText={setDuration} onEndEditing={commit} maxDecimals={0} placeholder="seg" />
+          {!done ? (
+            <InlineTimer
+              onStop={(seconds) => {
+                setDuration(String(seconds));
+                onUpdate(set.id, { durationS: seconds });
+              }}
+            />
+          ) : null}
+        </>
       ) : (
         <SetCell
           accessibilityLabel={`Repeticiones serie ${number}`}
@@ -136,6 +148,18 @@ function SetRowImpl({ set, number, tracking, unit, previous, records, onUpdate, 
           placeholder={previous?.reps !== null && previous?.reps !== undefined ? String(previous.reps) : '–'}
         />
       )}
+      {showRpe ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={set.rpe !== null ? `RPE ${formatNumber(set.rpe, { maxDecimals: 1 })}. Toca para cambiar` : 'Añadir RPE'}
+          onPress={() => onRpe(set)}
+          style={styles.colRpe}
+        >
+          <AppText variant="number" color={set.rpe !== null ? 'text' : 'textTertiary'} align="center">
+            {set.rpe !== null ? formatNumber(set.rpe, { maxDecimals: 1 }) : '–'}
+          </AppText>
+        </Pressable>
+      ) : null}
       <Pressable
         accessibilityRole="checkbox"
         accessibilityState={{ checked: done }}
@@ -152,7 +176,56 @@ function SetRowImpl({ set, number, tracking, unit, previous, records, onUpdate, 
 
 export const SetRow = memo(SetRowImpl);
 
-export function SetHeader({ tracking, unit }: { tracking: TrackingType; unit: WeightUnit }) {
+/** Cronómetro de la serie (plancha, isométricos): al pararlo rellena los segundos. */
+function InlineTimer({ onStop }: { onStop: (seconds: number) => void }) {
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(0);
+  const interval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (interval.current) clearInterval(interval.current);
+    },
+    [],
+  );
+
+  const toggle = () => {
+    if (startedAt === null) {
+      const t = Date.now();
+      setStartedAt(t);
+      setNow(t);
+      interval.current = setInterval(() => setNow(Date.now()), 250);
+      hapticSetDone();
+      return;
+    }
+    if (interval.current) clearInterval(interval.current);
+    interval.current = null;
+    const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+    setStartedAt(null);
+    hapticSetDone();
+    onStop(seconds);
+  };
+
+  const running = startedAt !== null;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={running ? `Cronómetro en marcha, ${Math.floor((now - startedAt) / 1000)} segundos. Toca para parar` : 'Empezar cronómetro'}
+      onPress={toggle}
+      style={[styles.timer, running ? styles.timerRunning : null]}
+    >
+      {running ? (
+        <AppText variant="caption" color="onAccent" style={styles.tabular}>
+          {formatDuration(Math.floor((now - startedAt) / 1000))}
+        </AppText>
+      ) : (
+        <Icon name="stopwatch-outline" size={22} color="textSecondary" />
+      )}
+    </Pressable>
+  );
+}
+
+export function SetHeader({ tracking, unit, showRpe }: { tracking: TrackingType; unit: WeightUnit; showRpe: boolean }) {
   const hasWeight = tracking === 'weight_reps' || tracking === 'added_weight_reps';
   const unitLabel = unit.toUpperCase();
   return (
@@ -171,6 +244,12 @@ export function SetHeader({ tracking, unit }: { tracking: TrackingType; unit: We
       <AppText variant="overline" color="textSecondary" align="center" style={styles.flex}>
         {tracking === 'duration' ? 'Seg' : 'Reps'}
       </AppText>
+      {tracking === 'duration' ? <View style={styles.timerSpace} /> : null}
+      {showRpe ? (
+        <AppText variant="overline" color="textSecondary" align="center" style={styles.colRpe}>
+          RPE
+        </AppText>
+      ) : null}
       <View style={styles.checkSpace} />
     </View>
   );
@@ -190,7 +269,12 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.xs },
   colSet: { width: 44, alignItems: 'center' },
   colPrev: { flex: 1.3, minHeight: 44, justifyContent: 'center' },
+  colRpe: { width: 44, minHeight: 44, justifyContent: 'center' },
   flex: { flex: 1 },
+  tabular: { fontVariant: ['tabular-nums'] },
+  timer: { width: 44, height: 44, borderRadius: radii.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceRaised },
+  timerRunning: { backgroundColor: colors.accent },
+  timerSpace: { width: 44 },
   check: {
     width: 56,
     height: 56,

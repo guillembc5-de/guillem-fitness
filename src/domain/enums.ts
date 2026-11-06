@@ -45,7 +45,7 @@ export type Equipment = (typeof EQUIPMENT)[number];
 export const TRACKING_TYPES = ['weight_reps', 'added_weight_reps', 'reps_only', 'duration'] as const;
 export type TrackingType = (typeof TRACKING_TYPES)[number];
 
-export const SET_TYPES = ['normal', 'warmup'] as const;
+export const SET_TYPES = ['normal', 'warmup', 'dropset', 'failure'] as const;
 export type SetType = (typeof SET_TYPES)[number];
 
 export const STEP_SOURCES = ['healthkit', 'health_connect', 'pedometer', 'demo'] as const;

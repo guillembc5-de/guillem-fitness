@@ -32,7 +32,7 @@ export function createClaudeProvider(apiKey: string, model: string): NutritionVi
   return {
     name: 'Claude',
 
-    async analyze(jpegBase64: string): Promise<FoodAnalysis> {
+    async analyze(jpegBase64: string, hints?: string): Promise<FoodAnalysis> {
       try {
         const response = await client.messages.parse({
           model,
@@ -43,7 +43,7 @@ export function createClaudeProvider(apiKey: string, model: string): NutritionVi
               role: 'user',
               content: [
                 { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: jpegBase64 } },
-                { type: 'text', text: FOOD_PROMPT },
+                { type: 'text', text: hints ? `${FOOD_PROMPT}\n\n${hints}` : FOOD_PROMPT },
               ],
             },
           ],

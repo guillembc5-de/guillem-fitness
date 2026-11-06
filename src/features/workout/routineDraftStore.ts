@@ -5,10 +5,11 @@ import { fromDisplayWeight, toDisplayWeight } from '@/domain/format';
 import { parseDecimal, toInputText } from '@/domain/parseNumber';
 import type { WeightUnit } from '@/domain/types';
 import type { Exercise, RoutineDetail, RoutineDraft } from '@/domain/workoutTypes';
+import { newId } from '@/lib/ids';
 
 /**
  * Borrador del editor de rutinas. Vive fuera de la pantalla para que el
- * selector de ejercicios (otra pantalla) pueda añadir ejercicios.
+ * selector de ejercicios (otra pantalla) pueda añadir o sustituir ejercicios.
  */
 
 export type DraftSet = { key: string; setType: SetType; weight: string; reps: string; duration: string };
@@ -19,6 +20,8 @@ export type DraftExercise = {
   name: string;
   trackingType: TrackingType;
   restSeconds: number | null;
+  notes: string;
+  supersetId: string | null;
   sets: DraftSet[];
 };
 
@@ -27,12 +30,19 @@ type State = {
   name: string;
   exercises: DraftExercise[];
   dirty: boolean;
+  /** Ejercicio que se está sustituyendo desde el selector (null = se añaden). */
+  replacingKey: string | null;
   load: (routine: RoutineDetail | null, unit: WeightUnit) => void;
   setName: (name: string) => void;
   addExercises: (list: readonly Exercise[]) => void;
+  startReplacing: (key: string | null) => void;
+  replaceExercise: (key: string, exercise: Exercise) => void;
   removeExercise: (key: string) => void;
   moveExercise: (key: string, delta: -1 | 1) => void;
   setRest: (key: string, seconds: number | null) => void;
+  setNotes: (key: string, notes: string) => void;
+  joinSuperset: (key: string, withKey: string) => void;
+  leaveSuperset: (key: string) => void;
   addSet: (exerciseKey: string) => void;
   removeSet: (exerciseKey: string, setKey: string) => void;
   updateSet: (exerciseKey: string, setKey: string, patch: Partial<Omit<DraftSet, 'key'>>) => void;
@@ -45,22 +55,33 @@ function emptySet(): DraftSet {
   return { key: key(), setType: 'normal', weight: '', reps: '', duration: '' };
 }
 
+/** Si una superserie se queda con un solo ejercicio, deja de serlo. */
+function dropLonelySupersets(list: DraftExercise[]): DraftExercise[] {
+  const counts = new Map<string, number>();
+  for (const e of list) if (e.supersetId) counts.set(e.supersetId, (counts.get(e.supersetId) ?? 0) + 1);
+  return list.map((e) => (e.supersetId && (counts.get(e.supersetId) ?? 0) < 2 ? { ...e, supersetId: null } : e));
+}
+
 export const useRoutineDraft = create<State>((set) => ({
   routineId: null,
   name: '',
   exercises: [],
   dirty: false,
+  replacingKey: null,
   load: (routine, unit) =>
     set({
       routineId: routine?.id ?? null,
       name: routine?.name ?? '',
       dirty: false,
+      replacingKey: null,
       exercises: (routine?.exercises ?? []).map((e) => ({
         key: key(),
         exerciseId: e.exercise.id,
         name: e.exercise.name,
         trackingType: e.exercise.trackingType,
         restSeconds: e.restSeconds,
+        notes: e.notes ?? '',
+        supersetId: e.supersetId,
         sets: e.sets.map((s) => ({
           key: key(),
           setType: s.setType,
@@ -82,11 +103,31 @@ export const useRoutineDraft = create<State>((set) => ({
           name: e.name,
           trackingType: e.trackingType,
           restSeconds: null,
+          notes: '',
+          supersetId: null,
           sets: [emptySet(), emptySet(), emptySet()],
         })),
       ],
     })),
-  removeExercise: (k) => set((st) => ({ dirty: true, exercises: st.exercises.filter((e) => e.key !== k) })),
+  startReplacing: (k) => set({ replacingKey: k }),
+  replaceExercise: (k, e) =>
+    set((st) => ({
+      dirty: true,
+      replacingKey: null,
+      exercises: st.exercises.map((x) =>
+        x.key === k
+          ? {
+              ...x,
+              exerciseId: e.id,
+              name: e.name,
+              trackingType: e.trackingType,
+              // Otro tipo de registro (p. ej. de peso a tiempo): los objetivos ya no sirven.
+              sets: x.trackingType === e.trackingType ? x.sets : x.sets.map((s) => ({ ...s, weight: '', reps: '', duration: '' })),
+            }
+          : x,
+      ),
+    })),
+  removeExercise: (k) => set((st) => ({ dirty: true, exercises: dropLonelySupersets(st.exercises.filter((e) => e.key !== k)) })),
   moveExercise: (k, delta) =>
     set((st) => {
       const i = st.exercises.findIndex((e) => e.key === k);
@@ -102,6 +143,26 @@ export const useRoutineDraft = create<State>((set) => ({
     }),
   setRest: (k, seconds) =>
     set((st) => ({ dirty: true, exercises: st.exercises.map((e) => (e.key === k ? { ...e, restSeconds: seconds } : e)) })),
+  setNotes: (k, notes) => set((st) => ({ dirty: true, exercises: st.exercises.map((e) => (e.key === k ? { ...e, notes } : e)) })),
+  joinSuperset: (k, withKey) =>
+    set((st) => {
+      const target = st.exercises.find((e) => e.key === withKey);
+      const moving = st.exercises.find((e) => e.key === k);
+      if (!target || !moving) return st;
+      const supersetId = target.supersetId ?? newId();
+      // Se coloca justo después del último ejercicio del grupo.
+      const others = st.exercises
+        .filter((e) => e.key !== k)
+        .map((e) => (e.key === withKey ? { ...e, supersetId } : e));
+      const lastIndex = Math.max(...others.map((e, i) => (e.supersetId === supersetId ? i : -1)));
+      others.splice(lastIndex + 1, 0, { ...moving, supersetId });
+      return { dirty: true, exercises: dropLonelySupersets(others) };
+    }),
+  leaveSuperset: (k) =>
+    set((st) => ({
+      dirty: true,
+      exercises: dropLonelySupersets(st.exercises.map((e) => (e.key === k ? { ...e, supersetId: null } : e))),
+    })),
   addSet: (k) =>
     set((st) => ({
       dirty: true,
@@ -133,7 +194,8 @@ export function toRoutineDraft(name: string, exercises: readonly DraftExercise[]
     exercises: exercises.map((e) => ({
       exerciseId: e.exerciseId,
       restSeconds: e.restSeconds,
-      notes: null,
+      notes: e.notes.trim() || null,
+      supersetId: e.supersetId,
       sets: e.sets.map((s) => {
         const reps = parseDecimal(s.reps);
         const duration = parseDecimal(s.duration);

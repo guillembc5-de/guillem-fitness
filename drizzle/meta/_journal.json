@@ -8,6 +8,13 @@
       "when": 1793790966920,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1793958401962,
+      "tag": "0001_hevy_y_memoria",
+      "breakpoints": true
     }
   ]
 }

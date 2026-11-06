@@ -21,6 +21,7 @@ const SCHEMA_VERSION = migrations.journal.entries.length;
 const TABLES: readonly (readonly [string, SQLiteTable])[] = [
   ['profile', schema.profile],
   ['exercise', schema.exercise],
+  ['routineFolder', schema.routineFolder],
   ['routine', schema.routine],
   ['routineExercise', schema.routineExercise],
   ['routineSet', schema.routineSet],
@@ -31,6 +32,7 @@ const TABLES: readonly (readonly [string, SQLiteTable])[] = [
   ['meal', schema.meal],
   ['foodItem', schema.foodItem],
   ['pendingPhoto', schema.pendingPhoto],
+  ['foodMemory', schema.foodMemory],
 ];
 
 const Value = z.union([z.string(), z.number(), z.boolean(), z.null()]);

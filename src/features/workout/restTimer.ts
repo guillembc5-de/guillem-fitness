@@ -89,6 +89,12 @@ export function hapticSetDone(): void {
   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 }
 
+/** Récord personal: doble vibración de éxito. */
+export function hapticRecord(): void {
+  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  setTimeout(() => void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success), 250);
+}
+
 export function hapticWarning(): void {
   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 }

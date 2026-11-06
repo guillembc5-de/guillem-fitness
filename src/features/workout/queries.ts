@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { getRepositories, type StartWorkoutParams } from '@/data/repositories';
-import type { ExerciseInput, RoutineDraft, SetPatch } from '@/domain/workoutTypes';
+import type { ExerciseInput, RoutineDraft, SetPatch, WorkoutDetailsPatch } from '@/domain/workoutTypes';
 
 export const workoutKeys = {
   routines: ['routines'] as const,
+  folders: ['routineFolders'] as const,
+  muscleSets: (fromMs: number) => ['muscleSets', fromMs] as const,
   routine: (id: string) => ['routine', id] as const,
   exercises: ['exercises'] as const,
   exercise: (id: string) => ['exercise', id] as const,
@@ -31,7 +33,36 @@ export function useRoutine(id: string) {
 
 function invalidateRoutines(client: QueryClient) {
   void client.invalidateQueries({ queryKey: workoutKeys.routines });
+  void client.invalidateQueries({ queryKey: workoutKeys.folders });
   void client.invalidateQueries({ queryKey: ['routine'] });
+}
+
+export function useRoutineFolders() {
+  return useQuery({ queryKey: workoutKeys.folders, queryFn: () => repos().routines.listFolders() });
+}
+
+export function useFolderActions() {
+  const client = useQueryClient();
+  const done = () => invalidateRoutines(client);
+  return {
+    create: useMutation({ mutationFn: (name: string) => repos().routines.createFolder(name), onSuccess: done }),
+    rename: useMutation({ mutationFn: (a: { id: string; name: string }) => repos().routines.renameFolder(a.id, a.name), onSuccess: done }),
+    remove: useMutation({ mutationFn: (id: string) => repos().routines.deleteFolder(id), onSuccess: done }),
+    move: useMutation({
+      mutationFn: (a: { routineId: string; folderId: string | null }) => repos().routines.moveToFolder(a.routineId, a.folderId),
+      onSuccess: done,
+    }),
+  };
+}
+
+/** Guarda un entreno como rutina nueva o actualiza la suya. */
+export function useSaveWorkoutAsRoutine() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (a: { workoutId: string; routineId: string | null; name: string }) =>
+      repos().routines.saveFromWorkout(a.workoutId, a.routineId, a.name),
+    onSuccess: () => invalidateRoutines(client),
+  });
 }
 
 export function useSaveRoutine() {
@@ -121,12 +152,12 @@ export function useWorkout(id: string) {
 }
 
 /** Lo que hiciste la última vez en cada ejercicio del entreno. */
-export function usePreviousSets(workoutId: string, exerciseIds: readonly string[]) {
+export function usePreviousSets(workoutId: string, exerciseIds: readonly string[], routineId: string | null = null) {
   return useQuery({
-    queryKey: workoutKeys.previous(workoutId, exerciseIds),
+    queryKey: [...workoutKeys.previous(workoutId, exerciseIds), routineId],
     queryFn: async () => {
       const entries = await Promise.all(
-        exerciseIds.map(async (id) => [id, await repos().workouts.lastSessionSets(id, workoutId)] as const),
+        exerciseIds.map(async (id) => [id, await repos().workouts.lastSessionSets(id, workoutId, routineId)] as const),
       );
       return Object.fromEntries(entries);
     },
@@ -144,8 +175,14 @@ export function useHistoryBests(workoutId: string, exerciseIds: readonly string[
   });
 }
 
+/** Series por músculo desde una fecha (estadísticas). */
+export function useMuscleSets(fromMs: number) {
+  return useQuery({ queryKey: workoutKeys.muscleSets(fromMs), queryFn: () => repos().workouts.muscleSets(fromMs) });
+}
+
 function invalidateWorkouts(client: QueryClient) {
   void client.invalidateQueries({ queryKey: workoutKeys.active });
+  void client.invalidateQueries({ queryKey: ['muscleSets'] });
   void client.invalidateQueries({ queryKey: workoutKeys.workouts });
   void client.invalidateQueries({ queryKey: ['workout'] });
   void client.invalidateQueries({ queryKey: ['exerciseHistory'] });
@@ -166,17 +203,38 @@ export function useFinishWorkout() {
   return useMutation({ mutationFn: (id: string) => repos().workouts.finish(id), onSuccess: () => invalidateWorkouts(client) });
 }
 
+export function useRepeatWorkout() {
+  const client = useQueryClient();
+  return useMutation({ mutationFn: (id: string) => repos().workouts.repeat(id), onSuccess: () => invalidateWorkouts(client) });
+}
+
+export function useSaveWorkoutEdits() {
+  const client = useQueryClient();
+  return useMutation({ mutationFn: (id: string) => repos().workouts.saveEdits(id), onSuccess: () => invalidateWorkouts(client) });
+}
+
+export function useUpdateWorkoutDetails() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (a: { id: string; patch: WorkoutDetailsPatch }) => repos().workouts.updateDetails(a.id, a.patch),
+    onSuccess: () => invalidateWorkouts(client),
+  });
+}
+
 export function useDeleteWorkout() {
   const client = useQueryClient();
   return useMutation({ mutationFn: (id: string) => repos().workouts.softDelete(id), onSuccess: () => invalidateWorkouts(client) });
 }
 
-/** Cambios dentro del entreno activo: solo hace falta recargar el entreno activo. */
+/** Cambios dentro de un entreno (el activo o uno que se está editando). */
 function useActiveMutation<T>(fn: (args: T) => Promise<void>) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: fn,
-    onSuccess: () => client.invalidateQueries({ queryKey: workoutKeys.active }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: workoutKeys.active });
+      void client.invalidateQueries({ queryKey: ['workout'] });
+    },
   });
 }
 
@@ -188,6 +246,14 @@ export function useWorkoutActions() {
     ),
     removeExercise: useActiveMutation((id: string) => w().removeExercise(id)),
     setExerciseRest: useActiveMutation((a: { workoutExerciseId: string; seconds: number }) => w().setExerciseRest(a.workoutExerciseId, a.seconds)),
+    setNotes: useActiveMutation((a: { workoutExerciseId: string; notes: string | null }) => w().setExerciseNotes(a.workoutExerciseId, a.notes)),
+    moveExercise: useActiveMutation((a: { workoutExerciseId: string; delta: -1 | 1 }) => w().moveExercise(a.workoutExerciseId, a.delta)),
+    replaceExercise: useActiveMutation((a: { workoutExerciseId: string; exerciseId: string }) => w().replaceExercise(a.workoutExerciseId, a.exerciseId)),
+    joinSuperset: useActiveMutation((a: { workoutExerciseId: string; withId: string }) => w().joinSuperset(a.workoutExerciseId, a.withId)),
+    leaveSuperset: useActiveMutation((workoutExerciseId: string) => w().leaveSuperset(workoutExerciseId)),
+    addWarmups: useActiveMutation((a: { workoutExerciseId: string; sets: { weightKg: number; reps: number }[] }) =>
+      w().addWarmupSets(a.workoutExerciseId, a.sets),
+    ),
     addSet: useActiveMutation((workoutExerciseId: string) => w().addSet(workoutExerciseId)),
     removeSet: useActiveMutation((setId: string) => w().removeSet(setId)),
     updateSet: useActiveMutation((a: { setId: string; patch: SetPatch }) => w().updateSet(a.setId, a.patch)),

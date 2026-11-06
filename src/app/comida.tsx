@@ -15,7 +15,8 @@ import { emptyRow, rowFromDraft, rowToDraft, rowTotals, type FoodRow } from '@/f
 import { FoodRowEditor } from '@/features/nutrition/FoodRowEditor';
 import { MEAL_LABELS } from '@/features/nutrition/labels';
 import { preparePhoto, readPhotoBase64 } from '@/features/nutrition/photos';
-import { useDeleteMeal, useRecentFoods, useSaveMeal, useSavePending } from '@/features/nutrition/queries';
+import { applyMemory, promptHints, type LearnEntry } from '@/domain/foodMemory';
+import { useDeleteMeal, useLearnFoods, useRecentFoods, useSaveMeal, useSavePending } from '@/features/nutrition/queries';
 import { analyzeFood } from '@/features/nutrition/vision/analyze';
 import { getVisionProvider } from '@/features/nutrition/vision/provider';
 import { canRetryLater, VisionError, VISION_ERROR_TEXT } from '@/features/nutrition/vision/types';
@@ -75,6 +76,7 @@ export default function MealScreen() {
   const deleteMeal = useDeleteMeal();
   const savePending = useSavePending();
   const recent = useRecentFoods();
+  const learnFoods = useLearnFoods();
 
   const analyze = async (data: string) => {
     if (!profile.data) return;
@@ -86,10 +88,14 @@ export default function MealScreen() {
       setPhase({ kind: 'error', error: e instanceof VisionError ? e : new VisionError('no_key', VISION_ERROR_TEXT.no_key) });
       return;
     }
-    const result = await analyzeFood(provider, data);
+    // Lo aprendido de tus comidas: contexto para la IA y ajuste de su respuesta.
+    const memories = await getRepositories()
+      .foodMemory.list()
+      .catch(() => []);
+    const result = await analyzeFood(provider, data, promptHints(memories) || undefined);
     setAiProvider(profile.data.aiProvider);
     if (result.status === 'ok') {
-      setRows(result.items.map((i) => rowFromDraft(i)));
+      setRows(applyMemory(result.items, memories).map((i) => rowFromDraft(i, true, i)));
       setDirty(true);
       setPhase({ kind: 'review' });
     } else if (result.status === 'no_food') {
@@ -200,7 +206,20 @@ export default function MealScreen() {
       aiProvider: photoUri ? aiProvider : null,
       items,
     };
-    saveMeal.mutate({ id: mode === 'edit' ? (params.mealId ?? null) : null, draft, pendingId: params.pendingId ?? null }, { onSuccess: finish });
+    // Lo que guardas enseña a la app: valores por 100 g y cuánto se desvió la IA en la ración.
+    const entries: LearnEntry[] = filled.flatMap((row, i) => {
+      const item = drafts[i];
+      return item ? [{ ...item, aiName: row.aiName, aiGrams: row.aiGrams }] : [];
+    });
+    saveMeal.mutate(
+      { id: mode === 'edit' ? (params.mealId ?? null) : null, draft, pendingId: params.pendingId ?? null },
+      {
+        onSuccess: () => {
+          learnFoods.mutate(entries);
+          finish();
+        },
+      },
+    );
   };
 
   const onDelete = () => {
@@ -214,6 +233,7 @@ export default function MealScreen() {
 
   const total = sumTotals(rows.map(rowTotals));
   const anyAi = rows.some((r) => r.aiEstimated);
+  const learnedCount = rows.filter((r) => r.learned.length > 0).length;
   const title = mode === 'edit' ? 'Editar comida' : photoUri || mode === 'photo' ? 'Revisar comida' : 'Añadir comida';
 
   return (
@@ -314,6 +334,15 @@ export default function MealScreen() {
               </AppText>
             </Card>
           ) : null}
+          {learnedCount > 0 ? (
+            <Card style={styles.learnedBanner}>
+              <Icon name="school-outline" color="info" />
+              <AppText variant="caption" color="text" style={styles.flex}>
+                {learnedCount === 1 ? 'He ajustado 1 alimento' : `He ajustado ${learnedCount} alimentos`} con lo que corregiste en comidas anteriores. Cuanto más
+                corrijas, más se acercará.
+              </AppText>
+            </Card>
+          ) : null}
 
           <SegmentedControl accessibilityLabel="Comida del día" options={MEAL_OPTIONS} value={mealType} onChange={setMealType} />
 
@@ -372,6 +401,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.lg },
   stretch: { alignSelf: 'stretch' },
   aiBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderWidth: 1, borderColor: colors.warmup },
+  learnedBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderWidth: 1, borderColor: colors.info },
   flex: { flex: 1 },
   recent: { gap: spacing.xs },
   chips: { gap: spacing.xs },

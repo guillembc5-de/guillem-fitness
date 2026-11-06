@@ -1,14 +1,23 @@
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { AppText, EmptyState, ErrorState, Icon, LoadingState, colors, radii, spacing } from '@/design';
+import { AppText, EmptyState, ErrorState, Icon, LoadingState, SegmentedControl, colors, radii, spacing } from '@/design';
 import { formatNumber, toDisplayWeight } from '@/domain/format';
 import type { WorkoutSummary } from '@/domain/workoutTypes';
 import { useProfile } from '@/features/profile/queries';
 import { formatMonth, formatWorkoutDate, formatWorkoutDuration } from '@/features/workout/format';
+import { WorkoutCalendar, WorkoutStatsView } from '@/features/workout/HistoryViews';
 import { useWorkouts } from '@/features/workout/queries';
+
+type View_ = 'list' | 'calendar' | 'stats';
+
+const VIEWS = [
+  { value: 'list' as const, label: 'Lista' },
+  { value: 'calendar' as const, label: 'Calendario' },
+  { value: 'stats' as const, label: 'Estadísticas' },
+];
 
 type Item = { type: 'month'; key: string; label: string; count: number } | { type: 'workout'; key: string; workout: WorkoutSummary };
 
@@ -16,6 +25,7 @@ export default function HistoryScreen() {
   const workouts = useWorkouts();
   const profile = useProfile();
   const unit = profile.data?.weightUnit ?? 'kg';
+  const [view, setView] = useState<View_>('list');
 
   const items = useMemo<Item[]>(() => {
     const result: Item[] = [];
@@ -44,8 +54,26 @@ export default function HistoryScreen() {
     );
   }
 
+  const switcher = (
+    <View style={styles.switcher}>
+      <SegmentedControl accessibilityLabel="Vista del historial" options={VIEWS} value={view} onChange={setView} />
+    </View>
+  );
+
+  if (view !== 'list') {
+    return (
+      <View style={styles.root}>
+        {switcher}
+        <ScrollView contentContainerStyle={styles.scroll}>
+          {view === 'calendar' ? <WorkoutCalendar workouts={workouts.data ?? []} /> : <WorkoutStatsView workouts={workouts.data ?? []} unit={unit} />}
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
+      {switcher}
       <FlashList
         data={items}
         keyExtractor={(i) => i.key}
@@ -92,6 +120,8 @@ function WorkoutRow({ workout: w, unit }: { workout: WorkoutSummary; unit: 'kg' 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   list: { paddingHorizontal: spacing.md, paddingBottom: spacing.xl },
+  switcher: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
+  scroll: { padding: spacing.md, paddingBottom: spacing.xl },
   month: { paddingTop: spacing.lg, paddingBottom: spacing.xs },
   card: {
     flexDirection: 'row',

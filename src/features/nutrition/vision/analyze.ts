@@ -13,11 +13,11 @@ export type AnalysisResult =
  * Si vuelve a fallar, el resultado es un error y la pantalla ofrece entrada manual.
  * Los fallos de red no se reintentan aquí: la foto se puede guardar como pendiente.
  */
-export async function analyzeFood(provider: NutritionVisionProvider, jpegBase64: string): Promise<AnalysisResult> {
+export async function analyzeFood(provider: NutritionVisionProvider, jpegBase64: string, hints?: string): Promise<AnalysisResult> {
   let lastError: VisionError | null = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      return toResult(await provider.analyze(jpegBase64));
+      return toResult(await provider.analyze(jpegBase64, hints));
     } catch (e) {
       lastError = e instanceof VisionError ? e : new VisionError('invalid_response', e instanceof Error ? e.message : String(e));
       if (lastError.kind !== 'invalid_response') break;

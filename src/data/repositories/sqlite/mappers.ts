@@ -40,6 +40,7 @@ export function toRoutine(row: typeof routine.$inferSelect): Routine {
     name: row.name,
     position: row.position,
     notes: row.notes,
+    folderId: row.folderId,
   };
 }
 
@@ -73,6 +74,7 @@ export function toWorkoutSet(row: typeof workoutSet.$inferSelect): WorkoutSet {
     weightKg: row.weightKg,
     reps: row.reps,
     durationS: row.durationS,
+    rpe: row.rpe,
     completedAt: row.completedAt,
   };
 }

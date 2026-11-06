@@ -26,6 +26,9 @@ export const colors = {
   successSoft: 'rgba(43, 182, 115, 0.15)',
   warmup: '#F5A524',
   warmupSoft: 'rgba(245, 165, 36, 0.35)',
+  /** Superseries y drop sets: azul para distinguirlos sin competir con el rojo. */
+  info: '#4C9EEB',
+  infoSoft: 'rgba(76, 158, 235, 0.18)',
   overlay: 'rgba(0, 0, 0, 0.6)',
 } as const;
 

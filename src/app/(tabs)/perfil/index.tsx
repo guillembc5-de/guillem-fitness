@@ -36,6 +36,18 @@ export default function PerfilScreen() {
         <ListRow icon="timer-outline" title="Descanso por defecto" value={formatDuration(p.defaultRestSeconds)} onPress={() => router.push('/perfil/datos')} />
       </Card>
 
+      <SectionHeader title="Ajustes" />
+      <Card padded={false}>
+        <ListRow
+          icon="barbell-outline"
+          title="Entreno"
+          subtitle="RPE, discos, pantalla encendida, avisos de récord"
+          onPress={() => router.push('/perfil/entreno')}
+          divider
+        />
+        <ListRow icon="heart-outline" title="Salud con Atajos" subtitle="Traer tus pasos de la app Salud" onPress={() => router.push('/perfil/salud')} />
+      </Card>
+
       <SectionHeader title="Inteligencia artificial" />
       <Card padded={false}>
         <ListRow

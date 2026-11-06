@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { AppText, Button, Card, LoadingState, Screen, SectionHeader, SegmentedControl, TextField, spacing } from '@/design';
+import { portionRatio } from '@/domain/foodMemory';
+import { formatNumber } from '@/domain/format';
 import { AI_PROVIDERS, type AiProvider, type Profile } from '@/domain/types';
+import { useClearFoodMemory, useFoodMemory } from '@/features/nutrition/queries';
+import { getVisionProvider } from '@/features/nutrition/vision/provider';
+import { VisionError, VISION_ERROR_TEXT } from '@/features/nutrition/vision/types';
 import { AI_PROVIDER_LABELS } from '@/features/profile/labels';
 import { DEFAULT_CLAUDE_MODEL, DEFAULT_GEMINI_MODEL } from '@/features/profile/profileForm';
 import { useApiKeyStatus, useProfile, useSaveApiKey, useSaveProfile } from '@/features/profile/queries';
-import { getVisionProvider } from '@/features/nutrition/vision/provider';
-import { VisionError, VISION_ERROR_TEXT } from '@/features/nutrition/vision/types';
 
 const PROVIDER_OPTIONS = AI_PROVIDERS.map((value) => ({ value, label: AI_PROVIDER_LABELS[value] }));
 
@@ -26,7 +29,8 @@ export default function IaScreen() {
 
 function IaForm({ profile }: { profile: Profile }) {
   const saveProfile = useSaveProfile();
-  const [geminiModel, setGeminiModel] = useState(profile.geminiModel);
+  // El antiguo valor por defecto ya no sirve a claves nuevas: se muestra el actual.
+  const [geminiModel, setGeminiModel] = useState(profile.geminiModel === 'gemini-flash-latest' ? DEFAULT_GEMINI_MODEL : profile.geminiModel);
   const [claudeModel, setClaudeModel] = useState(profile.claudeModel);
 
   const { id: _id, createdAt: _c, updatedAt: _u, deletedAt: _d, ...input } = profile;
@@ -52,6 +56,9 @@ function IaForm({ profile }: { profile: Profile }) {
         <KeyCard key={provider} provider={provider} active={provider === profile.aiProvider} profile={profile} />
       ))}
 
+      <SectionHeader title="Lo que ha aprendido" />
+      <LearnedCard />
+
       <SectionHeader title="Modelos" />
       <TextField label="Modelo de Gemini" value={geminiModel} onChangeText={setGeminiModel} autoCapitalize="none" autoCorrect={false} />
       <TextField label="Modelo de Claude" value={claudeModel} onChangeText={setClaudeModel} autoCapitalize="none" autoCorrect={false} />
@@ -61,6 +68,37 @@ function IaForm({ profile }: { profile: Profile }) {
         Las claves se guardan cifradas en el llavero del iPhone, nunca en la base de datos ni en el código.
       </AppText>
     </Screen>
+  );
+}
+
+/** Cuántos alimentos ha aprendido la app de tus correcciones y cómo ajusta las raciones. */
+function LearnedCard() {
+  const memory = useFoodMemory();
+  const clear = useClearFoodMemory();
+  const list = memory.data ?? [];
+  const { ratio, source } = portionRatio(null, list);
+  const pct = Math.round((ratio - 1) * 100);
+
+  const askClear = () =>
+    Alert.alert('¿Olvidar lo aprendido?', 'Las próximas fotos volverán a usar solo la estimación de la IA. Tus comidas guardadas no cambian.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Olvidar', style: 'destructive', onPress: () => clear.mutate() },
+    ]);
+
+  return (
+    <Card style={styles.learned}>
+      <AppText variant="body">
+        {list.length === 0
+          ? 'Todavía nada. Cada vez que guardes una comida, la app recuerda tus alimentos y sus valores, y aprende si la IA suele quedarse corta o pasarse con las raciones.'
+          : `Recuerda ${list.length} ${list.length === 1 ? 'alimento' : 'alimentos'} con tus valores. Cuando la IA los reconozca en una foto, usará los tuyos.`}
+      </AppText>
+      {source === 'global' && pct !== 0 ? (
+        <AppText variant="caption" color="textSecondary">
+          Con tus correcciones, la IA suele {pct > 0 ? 'quedarse corta' : 'pasarse'} un {formatNumber(Math.abs(pct))} % en las raciones: lo ajusta sola.
+        </AppText>
+      ) : null}
+      {list.length > 0 ? <Button title="Olvidar lo aprendido" variant="danger" compact onPress={askClear} loading={clear.isPending} /> : null}
+    </Card>
   );
 }
 
@@ -152,6 +190,7 @@ function KeyCard({ provider, active, profile }: { provider: AiProvider; active: 
 }
 
 const styles = StyleSheet.create({
+  learned: { gap: spacing.sm },
   card: { gap: spacing.sm },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
   actions: { flexDirection: 'row', gap: spacing.sm },

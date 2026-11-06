@@ -4,7 +4,8 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppText, Button, ErrorState, Icon, LoadingState, Screen, spacing } from '@/design';
 import { useProfile } from '@/features/profile/queries';
-import { useHistoryBests, useWorkout } from '@/features/workout/queries';
+import { weeklyStreak } from '@/domain/workoutStats';
+import { useHistoryBests, useWorkout, useWorkouts } from '@/features/workout/queries';
 import { sessionRecords } from '@/features/workout/sessionRecords';
 import { RecordList, WorkoutExercisesList, WorkoutStats } from '@/features/workout/WorkoutView';
 
@@ -13,6 +14,7 @@ export default function WorkoutSummaryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const workout = useWorkout(id);
   const profile = useProfile();
+  const all = useWorkouts();
   const unit = profile.data?.weightUnit ?? 'kg';
   const exerciseIds = useMemo(() => [...new Set((workout.data?.exercises ?? []).map((e) => e.exerciseId))], [workout.data]);
   const bests = useHistoryBests(id, exerciseIds, workout.data?.startedAt);
@@ -23,6 +25,9 @@ export default function WorkoutSummaryScreen() {
   const w = workout.data;
   const records = sessionRecords(w, bests.data ?? {});
   const trackingOf = (name: string) => w.exercises.find((e) => e.exerciseNameSnapshot === name)?.trackingType ?? 'weight_reps';
+  const finished = all.data ?? [];
+  const number = finished.filter((x) => x.startedAt <= w.startedAt).length;
+  const streak = weeklyStreak(finished.map((x) => x.localDate), w.startedAt);
 
   return (
     <Screen edges={['top']} footer={<Button title="Hecho" onPress={() => router.back()} />}>
@@ -35,6 +40,12 @@ export default function WorkoutSummaryScreen() {
           {w.name}
           {records.length > 0 ? ` · ${records.length} ${records.length === 1 ? 'récord nuevo' : 'récords nuevos'}` : ''}
         </AppText>
+        {number > 0 ? (
+          <AppText variant="bodyStrong" align="center">
+            Entreno nº {number}
+            {streak > 1 ? ` · 🔥 ${streak} semanas seguidas` : ''}
+          </AppText>
+        ) : null}
       </View>
       <WorkoutStats workout={w} unit={unit} recordCount={records.length} />
       <RecordList records={records} unit={unit} trackingOf={trackingOf} />
