@@ -7,6 +7,8 @@ import type { LocalDate } from '@/domain/localDay';
 import { compliance, monthGrid, type Compliance } from '@/domain/steps';
 import type { StepDay } from '@/domain/stepTypes';
 
+import { FitnessDetails } from './FitnessCard';
+import { useActivityDays, useExternalWorkouts } from './fitnessQueries';
 import { formatLongDay, formatMonthTitle, SOURCE_LABELS, WEEKDAY_INITIALS } from './labels';
 
 const CELL_STYLE: Record<Compliance, { bg: string; text: 'text' | 'bg' | 'textSecondary'; border?: string }> = {
@@ -131,6 +133,10 @@ type SheetProps = {
 /** Detalle de un día (hoja inferior). */
 export function DayDetailSheet({ date, day, defaultGoal, onClose }: SheetProps) {
   const insets = useSafeAreaInsets();
+  const activity = useActivityDays(date ?? '', date ?? '', date !== null);
+  const external = useExternalWorkouts(date ?? '', date ?? '', date !== null);
+  const fitnessDay = date ? (activity.data?.[0] ?? null) : null;
+  const fitnessWorkouts = date ? (external.data ?? []) : [];
   const goal = day?.goalSnapshot ?? defaultGoal;
   const pct = day ? Math.round((day.steps / goal) * 100) : 0;
   return (
@@ -164,6 +170,14 @@ export function DayDetailSheet({ date, day, defaultGoal, onClose }: SheetProps) 
                   No hay pasos registrados este día.
                 </AppText>
               )}
+              {fitnessDay || fitnessWorkouts.length > 0 ? (
+                <View style={styles.fitness}>
+                  <AppText variant="overline" color="textSecondary">
+                    Fitness
+                  </AppText>
+                  <FitnessDetails day={fitnessDay} workouts={fitnessWorkouts} />
+                </View>
+              ) : null}
               <Button title="Cerrar" variant="secondary" onPress={onClose} />
             </>
           ) : null}
@@ -174,6 +188,7 @@ export function DayDetailSheet({ date, day, defaultGoal, onClose }: SheetProps) 
 }
 
 const styles = StyleSheet.create({
+  fitness: { gap: spacing.sm },
   calendar: { gap: spacing.sm },
   periodHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   arrow: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

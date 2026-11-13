@@ -34,10 +34,14 @@ describe('biblioteca de ejercicios', () => {
 });
 
 describe('rutinas precargadas', () => {
-  it('lower 1 y upper 1 con los ejercicios de Hevy', () => {
-    expect(SEED_ROUTINES.map((r) => r.name)).toEqual(['lower 1', 'upper 1']);
-    expect(SEED_ROUTINES[0]?.exercises).toHaveLength(8);
-    expect(SEED_ROUTINES[1]?.exercises).toHaveLength(6);
+  it('las cuatro de Hevy y la del fisio', () => {
+    expect(SEED_ROUTINES.map((r) => r.name)).toEqual(['lower 1', 'upper 1', 'lower 2', 'upper 2', 'RECUPERACIÓ CREUATS']);
+    expect(SEED_ROUTINES.map((r) => r.exercises.length)).toEqual([8, 6, 8, 8, 9]);
+  });
+
+  it('ids únicos en todas las rutinas, ejercicios y series', () => {
+    const ids = SEED_ROUTINES.flatMap((r) => [r.id, ...r.exercises.flatMap((e) => [e.id, ...e.sets.map((s) => s.id)])]);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('solo usan ejercicios de la biblioteca', () => {

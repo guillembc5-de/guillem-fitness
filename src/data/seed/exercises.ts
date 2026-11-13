@@ -156,6 +156,16 @@ export const SEED_EXERCISES: readonly SeedExercise[] = [
   { id: '6d3fd241-18b4-4ced-bd3e-d9c93f9621c4', slug: 'remo-ergometro', name: 'Remo ergómetro', muscleGroup: 'cardio', equipment: 'machine', trackingType: 'duration' },
   { id: 'e0e3d81f-30e4-4b37-adb1-1612410bcffb', slug: 'escaladora', name: 'Escaladora (máquina)', muscleGroup: 'cardio', equipment: 'machine', trackingType: 'duration' },
   { id: '82f1bed7-749a-4059-9a8d-3c8ce11a1cda', slug: 'comba', name: 'Saltar a la comba', muscleGroup: 'cardio', equipment: 'other', trackingType: 'duration' },
+  // Añadidos el 6/11/2026: lower 2 y la pauta de recuperación del fisio.
+  { id: '8affb844-da02-4a2d-b5b5-cb83c715482d', slug: 'extension-pantorrilla-maquina', name: 'Extensión de pantorrilla (máquina)', muscleGroup: 'calves', equipment: 'machine', trackingType: 'weight_reps' },
+  { id: 'd1c02771-4aff-4bff-a41a-bdefd5be2981', slug: 'sentadilla-salto', name: 'Sentadilla con salto', muscleGroup: 'quads', equipment: 'bodyweight', trackingType: 'reps_only' },
+  { id: '054a6227-f1f7-4059-9ce0-5a396d354980', slug: 'peso-muerto-una-pierna', name: 'Peso muerto a una pierna', muscleGroup: 'hamstrings', equipment: 'bodyweight', trackingType: 'reps_only' },
+  { id: '00b0e31a-e131-4a6e-89e0-3df2fe57b5e0', slug: 'puente-gluteo-una-pierna', name: 'Puente de glúteo a una pierna', muscleGroup: 'glutes', equipment: 'bodyweight', trackingType: 'reps_only' },
+  { id: 'c5e832f1-81f3-4105-96d1-d24c36e0658e', slug: 'desplazamientos', name: 'Desplazamientos', muscleGroup: 'cardio', equipment: 'bodyweight', trackingType: 'duration' },
+  { id: 'b1ed1768-0521-47db-a305-497427e13f5b', slug: 'pogo-jumps', name: 'Pogo jumps (saltos de tobillo)', muscleGroup: 'calves', equipment: 'bodyweight', trackingType: 'reps_only' },
+  { id: 'e98e0a89-1260-45ce-aac1-4aee048fe3b4', slug: 'saltos-patinador', name: 'Saltos de patinador (skater)', muscleGroup: 'glutes', equipment: 'bodyweight', trackingType: 'reps_only' },
+  { id: '03e7ebe8-594c-48f1-9c28-6d15d4b63a0c', slug: 'salto-cajon', name: 'Salto al cajón', muscleGroup: 'quads', equipment: 'other', trackingType: 'reps_only' },
+  { id: 'dcfa7816-550d-4ba8-9ed7-93c09667ad37', slug: 'bajar-cajon', name: 'Bajar del cajón (aterrizaje)', muscleGroup: 'quads', equipment: 'other', trackingType: 'reps_only' },
 ];
 
 /** id de un ejercicio de la biblioteca por su slug. */

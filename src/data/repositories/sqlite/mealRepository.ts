@@ -1,4 +1,4 @@
-import { and, asc, between, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, between, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 
 import type { Db } from '@/data/db/client';
 import { foodItem, meal, pendingPhoto } from '@/data/db/schema';
@@ -116,6 +116,16 @@ export class SqliteMealRepository implements MealRepository {
       if (result.length >= limit) break;
     }
     return result;
+  }
+
+  async withPhotos(): Promise<Meal[]> {
+    const meals = this.db
+      .select()
+      .from(meal)
+      .where(and(isNotNull(meal.photoUri), isNull(meal.deletedAt)))
+      .orderBy(desc(meal.eatenAt))
+      .all();
+    return this.withItems(meals);
   }
 
   private insertItems(tx: Tx, mealId: string, draft: MealDraft, timestamp: number): void {

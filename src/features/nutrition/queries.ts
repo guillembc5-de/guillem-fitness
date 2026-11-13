@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { getRepositories } from '@/data/repositories';
+import { galleryDishes } from '@/domain/dishGallery';
 import type { LocalDate } from '@/domain/localDay';
 import type { LearnEntry } from '@/domain/foodMemory';
 import type { MealDraft, PendingPhotoInput } from '@/domain/nutritionTypes';
@@ -10,6 +11,8 @@ export const nutritionKeys = {
   meal: (id: string) => ['meal', id] as const,
   summaries: (from: LocalDate, to: LocalDate) => ['mealSummaries', from, to] as const,
   recent: ['recentFoods'] as const,
+  /** Empieza por «meals» para refrescarse con cualquier cambio en las comidas. */
+  gallery: ['meals', 'gallery'] as const,
   pending: ['pendingPhotos'] as const,
   memory: ['foodMemory'] as const,
 };
@@ -30,6 +33,11 @@ export function useMeal(id: string | null) {
 
 export function useDaySummaries(from: LocalDate, to: LocalDate) {
   return useQuery({ queryKey: nutritionKeys.summaries(from, to), queryFn: () => repos().meals.daySummaries(from, to) });
+}
+
+/** Galería de platos: una entrada por foto, con los valores que confirmaste. */
+export function useDishGallery() {
+  return useQuery({ queryKey: nutritionKeys.gallery, queryFn: async () => galleryDishes(await repos().meals.withPhotos()) });
 }
 
 export function useRecentFoods() {

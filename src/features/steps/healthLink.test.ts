@@ -12,6 +12,9 @@ describe('número de pasos tal y como lo escribe Atajos', () => {
     ['8432.6', 8433],
     ['12.345', 12345],
     [' 9 120 ', 9120],
+    ['8.432 passos', 8432],
+    ['8432 pasos', 8432],
+    ['8432 count', 8432],
   ])('«%s» → %d', (raw, expected) => {
     expect(parseStepCount(raw)).toBe(expected);
   });
@@ -47,5 +50,24 @@ describe('enlace de Salud', () => {
     expect(parseHealthLink({ pasos: '250000' }, now).ok).toBe(false);
     expect(parseHealthLink({ fecha: 'ayer', pasos: '100' }, now).ok).toBe(false);
     expect(parseHealthLink({}, now).ok).toBe(false);
+  });
+});
+
+describe('anillos de Fitness en el enlace', () => {
+  it('pasos, energía activa y minutos de ejercicio a la vez', () => {
+    expect(parseHealthLink({ pasos: '8432', energia: '612,4 kcal', ejercicio: '48 min' }, now)).toEqual({
+      ok: true,
+      days: [{ localDate: '2026-11-05', steps: 8432, activeKcal: 612, exerciseMin: 48 }],
+    });
+  });
+
+  it('sirve sin pasos, y un valor vacío es como si no viniera', () => {
+    expect(parseHealthLink({ energia: '1.204', ejercicio: '' }, now)).toEqual({ ok: true, days: [{ localDate: '2026-11-05', activeKcal: 1204 }] });
+  });
+
+  it('rechaza cifras absurdas', () => {
+    expect(parseHealthLink({ pasos: '100', energia: '25000' }, now).ok).toBe(false);
+    expect(parseHealthLink({ ejercicio: '2000' }, now).ok).toBe(false);
+    expect(parseHealthLink({ energia: 'mucha' }, now).ok).toBe(false);
   });
 });

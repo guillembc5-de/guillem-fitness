@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRepositories } from '@/data/repositories';
 import { addDays, type LocalDate } from '@/domain/localDay';
 
+import { fitnessKeys } from './fitnessQueries';
 import { setupSensorOnly, setupWithHealth, syncSteps } from './stepsService';
 
 export const stepKeys = {
@@ -22,6 +23,7 @@ export function useStepsSync(active: boolean, live = false) {
     queryFn: async () => {
       const status = await syncSteps();
       void client.invalidateQueries({ queryKey: stepKeys.all });
+      void client.invalidateQueries({ queryKey: fitnessKeys.all });
       return status;
     },
     enabled: active,

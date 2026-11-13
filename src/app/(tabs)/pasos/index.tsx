@@ -9,6 +9,7 @@ import { monthDates, streak, weekDates } from '@/domain/steps';
 import type { StepDay } from '@/domain/stepTypes';
 import { useProfile } from '@/features/profile/queries';
 import { DayDetailSheet, MonthCalendar, PeriodHeader } from '@/features/steps/components';
+import { FitnessCard } from '@/features/steps/FitnessCard';
 import { formatMonthTitle, formatWeekRange, SOURCE_LABELS, WEEKDAY_INITIALS } from '@/features/steps/labels';
 import { PermissionBanner, SensorOnlyNote, StepsIntro } from '@/features/steps/PermissionCard';
 import { useRecentStepDays, useStepDays, useStepsSync } from '@/features/steps/queries';
@@ -77,6 +78,8 @@ export default function PasosScreen() {
         <Stat label="Calorías" value={formatNumber(todayDay?.kcal ?? 0)} unit="kcal" />
         <Stat label="Racha" value={`🔥 ${currentStreak}`} unit={currentStreak === 1 ? 'día' : 'días'} />
       </Card>
+
+      <FitnessCard date={today} />
 
       {status ? <PermissionBanner reason={status.reason} detail={status.healthError} /> : null}
 

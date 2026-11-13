@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { memo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { AppText, Button, Card, Icon, colors, radii, showActionSheet, spacing } from '@/design';
+import { AppText, Button, Card, Icon, colors, radii, showActionSheet, showReorderSheet, spacing } from '@/design';
 import { SET_TYPES, type SetType } from '@/domain/enums';
 import { formatDuration, formatNumber } from '@/domain/format';
 import { matchPreviousSets, recordsInSession, setNumbers, type ExerciseBests } from '@/domain/workout';
@@ -36,7 +36,7 @@ type Props = {
 const WEIGHTED = new Set(['weight_reps', 'added_weight_reps']);
 
 /** Un ejercicio del entreno con sus series, notas y su menú «⋯». */
-function ExerciseBlockImpl({ we, siblings, index, unit, previous, bests, supersetLetter, live, actions, onComplete }: Props) {
+function ExerciseBlockImpl({ we, siblings, unit, previous, bests, supersetLetter, live, actions, onComplete }: Props) {
   const showRpe = useWorkoutSettings((s) => s.rpe);
   const barKg = useWorkoutSettings((s) => s.barKg);
   const matched = matchPreviousSets(we.sets, previous);
@@ -68,28 +68,40 @@ function ExerciseBlockImpl({ we, siblings, index, unit, previous, bests, superse
     actions.addWarmups.mutate({ workoutExerciseId: we.id, sets });
   };
 
+  const reorder = () =>
+    showReorderSheet(
+      'Reordenar ejercicios',
+      siblings.map((s) => ({ key: s.id, label: s.exerciseNameSnapshot, caption: `${s.sets.length} ${s.sets.length === 1 ? 'serie' : 'series'}` })),
+      (orderedIds) => actions.reorderExercises.mutate({ workoutId: we.workoutId, orderedIds }),
+    );
+
+  // Mismo orden que el menú de Hevy; lo propio de esta app va antes de «Eliminar».
   const openMenu = () =>
-    showActionSheet(we.exerciseNameSnapshot, [
-      ...(we.supersetId
-        ? [{ label: 'Quitar de la superserie', onPress: () => actions.leaveSuperset.mutate(we.id) }]
-        : siblings.length > 1
-          ? [{ label: 'Hacer superserie con…', onPress: chooseSupersetPartner }]
-          : []),
-      ...(index > 0 ? [{ label: 'Subir', onPress: () => actions.moveExercise.mutate({ workoutExerciseId: we.id, delta: -1 }) }] : []),
-      ...(index < siblings.length - 1 ? [{ label: 'Bajar', onPress: () => actions.moveExercise.mutate({ workoutExerciseId: we.id, delta: 1 }) }] : []),
-      { label: 'Sustituir ejercicio', onPress: () => router.push({ pathname: '/elegir-ejercicio', params: { target: 'replace', weId: we.id } }) },
-      ...(WEIGHTED.has(we.trackingType) && firstWorking ? [{ label: 'Añadir series de calentamiento', onPress: addWarmups }] : []),
+    showActionSheet(null, [
+      { label: 'Reordenar ejercicios', icon: 'swap-vertical', disabled: siblings.length < 2, onPress: reorder },
+      { label: 'Reemplazar ejercicio', icon: 'sync', onPress: () => router.push({ pathname: '/elegir-ejercicio', params: { target: 'replace', weId: we.id } }) },
+      we.supersetId
+        ? { label: 'Quitar de la superserie', icon: 'remove', onPress: () => actions.leaveSuperset.mutate(we.id) }
+        : { label: 'Agregar a superserie', icon: 'add', disabled: siblings.length < 2, onPress: chooseSupersetPartner },
+      ...(WEIGHTED.has(we.trackingType) && firstWorking ? [{ label: 'Añadir series de calentamiento', icon: 'flame-outline' as const, onPress: addWarmups }] : []),
       ...(we.equipment === 'barbell'
-        ? [{ label: 'Calculadora de discos', onPress: () => router.push({ pathname: '/discos', params: { kg: String(firstWorking?.weightKg ?? '') } }) }]
+        ? [
+            {
+              label: 'Calculadora de discos',
+              icon: 'barbell-outline' as const,
+              onPress: () => router.push({ pathname: '/discos', params: { kg: String(firstWorking?.weightKg ?? '') } }),
+            },
+          ]
         : []),
-      ...(live ? [{ label: `Descanso: ${formatDuration(we.restSeconds)}`, onPress: chooseRest }] : []),
+      ...(live ? [{ label: `Descanso: ${formatDuration(we.restSeconds)}`, icon: 'timer-outline' as const, onPress: chooseRest }] : []),
       {
-        label: 'Quitar ejercicio',
+        label: 'Eliminar ejercicio',
+        icon: 'close',
         destructive: true,
         onPress: () =>
-          Alert.alert('¿Quitar el ejercicio?', 'Se borrarán sus series de este entreno.', [
+          Alert.alert('¿Eliminar el ejercicio?', 'Se borrarán sus series de este entreno.', [
             { text: 'Cancelar', style: 'cancel' },
-            { text: 'Quitar', style: 'destructive', onPress: () => actions.removeExercise.mutate(we.id) },
+            { text: 'Eliminar', style: 'destructive', onPress: () => actions.removeExercise.mutate(we.id) },
           ]),
       },
     ]);
@@ -126,7 +138,7 @@ function ExerciseBlockImpl({ we, siblings, index, unit, previous, bests, superse
           <AppText variant="headline">{we.exerciseNameSnapshot}</AppText>
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel={`Opciones de ${we.exerciseNameSnapshot}`} onPress={openMenu} style={styles.iconButton}>
-          <Icon name="ellipsis-horizontal" color="textSecondary" />
+          <Icon name="ellipsis-vertical" color="textSecondary" />
         </Pressable>
       </View>
 

@@ -1,4 +1,4 @@
-import { count, eq } from 'drizzle-orm';
+import { count, eq, isNull, max } from 'drizzle-orm';
 
 import type { Db } from '@/data/db/client';
 import { exercise, routine, routineExercise, routineSet } from '@/data/db/schema';
@@ -12,7 +12,9 @@ import { SEED_ROUTINES } from './routines';
  * Carga la biblioteca de ejercicios y las rutinas de partida.
  * - Ejercicios: se insertan los que falten (id fijos, sin duplicar). Una
  *   consulta de recuento por arranque; solo escribe si hay novedades.
- * - Rutinas: solo si la tabla está vacía (si borras una, no vuelve).
+ * - Rutinas: se insertan las que aún no existan por su id. Las borradas
+ *   siguen en la tabla (marcadas), así que no vuelven. Si ya tienes
+ *   rutinas, las nuevas van al final de la lista.
  */
 export function seedDatabase(db: Db): void {
   const timestamp = now();
@@ -43,12 +45,15 @@ export function seedDatabase(db: Db): void {
     });
   }
 
-  const routineCount = db.select({ n: count() }).from(routine).get()?.n ?? 0;
-  if (routineCount === 0) {
+  const known = new Set(db.select({ id: routine.id }).from(routine).all().map((r) => r.id));
+  const missing = SEED_ROUTINES.filter((r) => !known.has(r.id));
+  if (missing.length > 0) {
+    const lastPosition = known.size === 0 ? null : (db.select({ p: max(routine.position) }).from(routine).where(isNull(routine.deletedAt)).get()?.p ?? -1);
     db.transaction((tx) => {
-      for (const r of SEED_ROUTINES) {
+      missing.forEach((r, i) => {
+        const position = lastPosition === null ? r.position : lastPosition + 1 + i;
         tx.insert(routine)
-          .values({ id: r.id, createdAt: timestamp, updatedAt: timestamp, deletedAt: null, name: r.name, position: r.position, notes: null })
+          .values({ id: r.id, createdAt: timestamp, updatedAt: timestamp, deletedAt: null, name: r.name, position, notes: r.notes ?? null })
           .run();
         for (const re of r.exercises) {
           tx.insert(routineExercise)
@@ -61,7 +66,7 @@ export function seedDatabase(db: Db): void {
               exerciseId: seedExerciseId(re.exerciseSlug),
               position: re.position,
               restSeconds: re.restSeconds,
-              notes: null,
+              notes: re.notes ?? null,
             })
             .run();
           for (const s of re.sets) {
@@ -76,12 +81,12 @@ export function seedDatabase(db: Db): void {
                 setType: s.setType,
                 targetWeightKg: s.targetWeightKg,
                 targetReps: s.targetReps,
-                targetDurationS: null,
+                targetDurationS: s.targetDurationS ?? null,
               })
               .run();
           }
         }
-      }
+      });
     });
   }
 }

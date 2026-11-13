@@ -268,3 +268,43 @@ export const foodMemory = sqliteTable(
   },
   (t) => [uniqueIndex('food_memory_search_idx').on(t.searchName)],
 );
+
+/**
+ * Actividad del día según la app Fitness (Apple Watch o iPhone), leída de
+ * Salud o enviada por el Atajo. Una fila por día; null = no llegó ese dato.
+ */
+export const activityDay = sqliteTable(
+  'activity_day',
+  {
+    ...meta(),
+    localDate: text('local_date').notNull(),
+    /** Energía activa (kcal por encima del reposo), como el anillo Moverse. */
+    activeKcal: real('active_kcal'),
+    /** Minutos de ejercicio, como el anillo Ejercicio. */
+    exerciseMin: integer('exercise_min'),
+    /** healthkit (Salud directo) o shortcut (Atajo). */
+    source: text('source').notNull(),
+  },
+  (t) => [uniqueIndex('activity_day_date_idx').on(t.localDate)],
+);
+
+/** Entrenos registrados en Salud por el Apple Watch u otras apps (correr, caminar, bici…). */
+export const externalWorkout = sqliteTable(
+  'external_workout',
+  {
+    ...meta(),
+    /** uuid del entreno en Salud: evita duplicarlo al volver a leer. */
+    externalId: text('external_id').notNull(),
+    localDate: text('local_date').notNull(),
+    startedAt: integer('started_at').notNull(),
+    endedAt: integer('ended_at').notNull(),
+    /** HKWorkoutActivityType (número). */
+    activityType: integer('activity_type').notNull(),
+    durationS: integer('duration_s').notNull(),
+    kcal: real('kcal'),
+    distanceM: real('distance_m'),
+    /** App que lo registró (por ejemplo, «Entrenamiento» del Watch). */
+    sourceName: text('source_name'),
+  },
+  (t) => [uniqueIndex('external_workout_ext_idx').on(t.externalId), index('external_workout_date_idx').on(t.localDate)],
+);

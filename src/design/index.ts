@@ -1,5 +1,6 @@
 export * from './tokens';
 export { ActionSheetHost, showActionSheet, type SheetOption } from './components/ActionSheet';
+export { ReorderSheetHost, showReorderSheet, type ReorderItem } from './components/ReorderSheet';
 export { AppText, type AppTextProps } from './components/AppText';
 export { BarChart, type Bar } from './components/BarChart';
 export { ProgressRing } from './components/ProgressRing';

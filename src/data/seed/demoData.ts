@@ -162,7 +162,8 @@ export async function generateDemoData(db: Db, onProgress?: (p: number) => void)
               })
               .run();
             re.sets.forEach((s, si) => {
-              const weight = s.setType === 'warmup' ? s.targetWeightKg : Math.max(0, Math.round((s.targetWeightKg * factor * between(0.97, 1.03)) / 2.5) * 2.5);
+              const target = s.targetWeightKg ?? 0;
+              const weight = s.setType === 'warmup' ? target : Math.max(0, Math.round((target * factor * between(0.97, 1.03)) / 2.5) * 2.5);
               tx.insert(workoutSet)
                 .values({
                   id: newId(),
@@ -173,7 +174,7 @@ export async function generateDemoData(db: Db, onProgress?: (p: number) => void)
                   position: si,
                   setType: s.setType,
                   weightKg: weight,
-                  reps: Math.max(1, s.targetReps + Math.round(between(-2, 2))),
+                  reps: Math.max(1, (s.targetReps ?? 10) + Math.round(between(-2, 2))),
                   durationS: null,
                   completedAt: startedAt + (ei * 10 + si * 3) * 60_000,
                 })

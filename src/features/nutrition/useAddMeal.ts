@@ -7,7 +7,7 @@ import type { LocalDate } from '@/domain/localDay';
 
 import { pickPhoto } from './photos';
 
-/** Menú «añadir comida»: foto, galería o a mano. */
+/** Menú «añadir comida»: foto, carrete, un plato ya guardado o a mano. */
 export function useAddMeal(date: LocalDate) {
   const fromPhoto = async (source: 'camera' | 'library', mealType?: MealType) => {
     const result = await pickPhoto(source);
@@ -28,11 +28,15 @@ export function useAddMeal(date: LocalDate) {
   const manual = (mealType?: MealType) =>
     router.push({ pathname: '/comida', params: { mode: 'manual', date, ...(mealType ? { mealType } : {}) } });
 
+  const fromGallery = (mealType?: MealType) =>
+    router.push({ pathname: '/calorias/galeria', params: { date, ...(mealType ? { mealType } : {}) } });
+
   const open = (mealType?: MealType) =>
     showActionSheet('Añadir comida', [
-      { label: 'Hacer foto', onPress: () => void fromPhoto('camera', mealType) },
-      { label: 'Elegir de la galería', onPress: () => void fromPhoto('library', mealType) },
-      { label: 'Añadir a mano', onPress: () => manual(mealType) },
+      { label: 'Hacer foto', icon: 'camera-outline', onPress: () => void fromPhoto('camera', mealType) },
+      { label: 'Elegir foto del carrete', icon: 'image-outline', onPress: () => void fromPhoto('library', mealType) },
+      { label: 'Repetir un plato guardado', icon: 'images-outline', onPress: () => fromGallery(mealType) },
+      { label: 'Añadir a mano', icon: 'create-outline', onPress: () => manual(mealType) },
     ]);
 
   return { open };

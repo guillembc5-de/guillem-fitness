@@ -1,6 +1,9 @@
 /**
  * @jest-environment node
  */
+import { notInArray } from 'drizzle-orm';
+
+import { routine } from '@/data/db/schema';
 import { recordsInSession } from '@/domain/workout';
 import { seedDatabase } from '@/data/seed/seed';
 import { SEED_EXERCISES, seedExerciseId } from '@/data/seed/exercises';
@@ -47,10 +50,10 @@ async function completeAllAndFinish(workoutId: string) {
 }
 
 describe('carga inicial', () => {
-  it('biblioteca completa y tus dos rutinas', async () => {
+  it('biblioteca completa y tus rutinas', async () => {
     expect(await exercises.list()).toHaveLength(SEED_EXERCISES.length);
     const list = await routines.list();
-    expect(list.map((r) => r.name)).toEqual(['lower 1', 'upper 1']);
+    expect(list.map((r) => r.name)).toEqual(['lower 1', 'upper 1', 'lower 2', 'upper 2', 'RECUPERACIÓ CREUATS']);
     expect(list[1]?.exerciseNames[0]).toBe('Press de pecho inclinado (máquina)');
   });
 
@@ -59,7 +62,32 @@ describe('carga inicial', () => {
     await routines.softDelete(id);
     seedDatabase(db);
     expect(await exercises.list()).toHaveLength(SEED_EXERCISES.length);
-    expect((await routines.list()).map((r) => r.name)).toEqual(['upper 1']);
+    expect((await routines.list()).map((r) => r.name)).toEqual(['upper 1', 'lower 2', 'upper 2', 'RECUPERACIÓ CREUATS']);
+  });
+
+  it('a quien ya tenía rutinas le añade las nuevas al final, sin tocar las suyas', async () => {
+    const fresh = await createTestDb();
+    // Como una instalación anterior: solo lower 1 y upper 1, más una rutina propia.
+    seedDatabase(fresh);
+    const repo = new SqliteRoutineRepository(fresh);
+    fresh.delete(routine).where(notInArray(routine.name, ['lower 1', 'upper 1'])).run();
+    const mine = await repo.save(null, { name: 'Mi rutina', notes: null, exercises: [] });
+    seedDatabase(fresh);
+    const list = await repo.list();
+    expect(list.map((r) => r.name)).toEqual(['lower 1', 'upper 1', 'Mi rutina', 'lower 2', 'upper 2', 'RECUPERACIÓ CREUATS']);
+    expect(list.find((r) => r.id === mine)?.name).toBe('Mi rutina');
+  });
+
+  it('la rutina del fisio lleva sus notas y deja vacío lo que la pizarra no dice', async () => {
+    const rec = (await routines.list()).find((r) => r.name === 'RECUPERACIÓ CREUATS');
+    const detail = rec ? await routines.get(rec.id) : null;
+    expect(detail?.notes).toContain('fisio');
+    expect(detail?.exercises).toHaveLength(9);
+    expect(detail?.exercises[0]?.sets[0]?.targetReps).toBe(30);
+    const pogo = detail?.exercises.find((e) => e.exercise.name.startsWith('Pogo'));
+    expect(pogo?.sets).toHaveLength(4);
+    expect(pogo?.notes).toContain('una pierna, lateral');
+    expect(pogo?.sets[0]?.targetReps).toBeNull();
   });
 });
 
@@ -293,6 +321,19 @@ describe('comidas', () => {
     await meals.softDelete(id);
     expect(await meals.byDate('2026-11-04')).toHaveLength(0);
     expect(await meals.daySummaries('2026-11-04', '2026-11-04')).toHaveLength(0);
+  });
+
+  it('la galería trae solo las comidas con foto, la más reciente primero', async () => {
+    const meals = new SqliteMealRepository(db);
+    const base = draft('2026-11-04', 1000);
+    await meals.create({ ...base, source: 'manual', photoUri: null });
+    await meals.create({ ...base, eatenAt: 2000, source: 'photo', photoUri: 'file:///a/meal-photos/uno.jpg' });
+    await meals.create({ ...base, eatenAt: 3000, source: 'photo', photoUri: 'file:///b/meal-photos/dos.jpg' });
+    const deleted = await meals.create({ ...base, eatenAt: 4000, source: 'photo', photoUri: 'file:///b/meal-photos/tres.jpg' });
+    await meals.softDelete(deleted);
+    const gallery = await meals.withPhotos();
+    expect(gallery.map((m) => m.photoUri)).toEqual(['file:///b/meal-photos/dos.jpg', 'file:///a/meal-photos/uno.jpg']);
+    expect(gallery[0]?.items).toHaveLength(2);
   });
 
   it('alimentos recientes sin repetir', async () => {

@@ -8,6 +8,7 @@ import Storage from 'expo-sqlite/kv-store';
 const KEYS = {
   setupDone: 'steps.setupDone',
   sensorOnly: 'steps.sensorOnly',
+  fitnessAsked: 'steps.fitnessAsked',
 } as const;
 
 export type StepPrefs = { setupDone: boolean; sensorOnly: boolean };
@@ -22,6 +23,15 @@ export function getStepPrefs(): StepPrefs {
 export function setStepPrefs(prefs: Partial<StepPrefs>): void {
   if (prefs.setupDone !== undefined) Storage.setItemSync(KEYS.setupDone, prefs.setupDone ? '1' : '0');
   if (prefs.sensorOnly !== undefined) Storage.setItemSync(KEYS.sensorOnly, prefs.sensorOnly ? '1' : '0');
+}
+
+/** Si ya se pidió a Salud el permiso de Fitness (energía, minutos y entrenos). */
+export function getFitnessAsked(): boolean {
+  return Storage.getItemSync(KEYS.fitnessAsked) === '1';
+}
+
+export function setFitnessAsked(): void {
+  Storage.setItemSync(KEYS.fitnessAsked, '1');
 }
 
 /** Última vez que llegaron pasos de Salud por un Atajo (para mostrarlo en Perfil). */

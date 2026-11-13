@@ -248,6 +248,7 @@ export function useWorkoutActions() {
     setExerciseRest: useActiveMutation((a: { workoutExerciseId: string; seconds: number }) => w().setExerciseRest(a.workoutExerciseId, a.seconds)),
     setNotes: useActiveMutation((a: { workoutExerciseId: string; notes: string | null }) => w().setExerciseNotes(a.workoutExerciseId, a.notes)),
     moveExercise: useActiveMutation((a: { workoutExerciseId: string; delta: -1 | 1 }) => w().moveExercise(a.workoutExerciseId, a.delta)),
+    reorderExercises: useActiveMutation((a: { workoutId: string; orderedIds: readonly string[] }) => w().reorderExercises(a.workoutId, a.orderedIds)),
     replaceExercise: useActiveMutation((a: { workoutExerciseId: string; exerciseId: string }) => w().replaceExercise(a.workoutExerciseId, a.exerciseId)),
     joinSuperset: useActiveMutation((a: { workoutExerciseId: string; withId: string }) => w().joinSuperset(a.workoutExerciseId, a.withId)),
     leaveSuperset: useActiveMutation((workoutExerciseId: string) => w().leaveSuperset(workoutExerciseId)),

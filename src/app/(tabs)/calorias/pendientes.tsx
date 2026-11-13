@@ -6,6 +6,7 @@ import { AppText, Button, Card, EmptyState, ErrorState, LoadingState, Screen, co
 import type { PendingPhoto } from '@/domain/nutritionTypes';
 import { MEAL_LABELS } from '@/features/nutrition/labels';
 import { usePendingPhotos, useResolvePending } from '@/features/nutrition/queries';
+import { resolvePhotoUri } from '@/features/nutrition/photos';
 import { formatLongDay } from '@/features/steps/labels';
 
 /** Fotos que no se pudieron analizar (sin conexión, sin clave…). */
@@ -49,7 +50,7 @@ function PendingCard({ photo }: { photo: PendingPhoto }) {
           resolve.mutate(photo.id, {
             onSuccess: () => {
               try {
-                new File(photo.photoUri).delete();
+                new File(resolvePhotoUri(photo.photoUri)).delete();
               } catch {
                 // Si el archivo ya no existe, no pasa nada.
               }
@@ -61,7 +62,7 @@ function PendingCard({ photo }: { photo: PendingPhoto }) {
   return (
     <Card style={styles.card}>
       <View style={styles.row}>
-        <Image source={{ uri: photo.photoUri }} style={styles.thumb} accessibilityLabel="Foto pendiente" />
+        <Image source={{ uri: resolvePhotoUri(photo.photoUri) }} style={styles.thumb} accessibilityLabel="Foto pendiente" />
         <View style={styles.flex}>
           <AppText variant="bodyStrong" style={styles.capitalize}>
             {MEAL_LABELS[photo.mealType]} · {formatLongDay(photo.localDate)}

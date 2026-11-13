@@ -15,6 +15,13 @@
       "when": 1793958401962,
       "tag": "0001_hevy_y_memoria",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793968061297,
+      "tag": "0002_fitness",
+      "breakpoints": true
     }
   ]
 }

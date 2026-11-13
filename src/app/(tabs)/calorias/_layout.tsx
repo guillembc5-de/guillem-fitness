@@ -9,6 +9,8 @@ export default function CaloriasLayout() {
       <Stack.Screen name="historial" options={{ title: 'Historial' }} />
       <Stack.Screen name="dia/[fecha]" options={{ title: 'Día' }} />
       <Stack.Screen name="pendientes" options={{ title: 'Fotos pendientes' }} />
+      <Stack.Screen name="galeria" options={{ title: 'Galería de platos' }} />
+      <Stack.Screen name="plato/[id]" options={{ title: 'Plato' }} />
     </Stack>
   );
 }

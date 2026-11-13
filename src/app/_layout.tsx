@@ -11,7 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { db } from '@/data/db/client';
 import { seedDatabase } from '@/data/seed/seed';
-import { ActionSheetHost, ErrorState, LoadingState, colors } from '@/design';
+import { ActionSheetHost, ErrorState, LoadingState, ReorderSheetHost, colors } from '@/design';
 import { stackScreenOptions } from '@/design/stackOptions';
 import { useProfile } from '@/features/profile/queries';
 import { configureNotifications } from '@/features/workout/restTimer';
@@ -45,6 +45,7 @@ export default function RootLayout() {
               <StatusBar style="light" />
               <DatabaseGate />
               <ActionSheetHost />
+              <ReorderSheetHost />
             </ThemeProvider>
           </QueryClientProvider>
         </KeyboardProvider>

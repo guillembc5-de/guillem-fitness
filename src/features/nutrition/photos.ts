@@ -2,6 +2,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 
+import { photoFileName } from '@/domain/dishGallery';
 import { newId } from '@/lib/ids';
 
 /** Lado largo máximo de la foto que se envía a la IA. */
@@ -47,7 +48,21 @@ export async function preparePhoto(photo: { uri: string; width: number; height: 
   return { uri: destination.uri, base64: saved.base64 ?? (await destination.base64()) };
 }
 
+/**
+ * Ruta actual de una foto guardada. iOS cambia la carpeta de la app cada vez
+ * que se reinstala (con Sideloadly, cada 7 días), así que la ruta completa
+ * que se guardó deja de valer: se reconstruye con el nombre del archivo.
+ */
+export function resolvePhotoUri(stored: string): string {
+  try {
+    const current = new File(photosDir(), photoFileName(stored));
+    return current.exists ? current.uri : stored;
+  } catch {
+    return stored;
+  }
+}
+
 /** Contenido en base64 de una foto ya guardada (para reintentar una pendiente). */
 export async function readPhotoBase64(uri: string): Promise<string> {
-  return new File(uri).base64();
+  return new File(resolvePhotoUri(uri)).base64();
 }

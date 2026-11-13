@@ -7,6 +7,7 @@ import { SqliteWorkoutRepository } from '@/data/repositories/sqlite/workoutRepos
 import { SqliteRoutineRepository } from '@/data/repositories/sqlite/routineRepository';
 import { SqliteStepDayRepository } from '@/data/repositories/sqlite/stepDayRepository';
 import { seedDatabase } from '@/data/seed/seed';
+import { SEED_ROUTINES } from '@/data/seed/routines';
 import { createTestDb } from '@/test/testDb';
 import type { Db } from '@/data/db/client';
 
@@ -71,7 +72,7 @@ describe('exportar e importar en JSON', () => {
     expect(result.inserted).toBeGreaterThan(150);
 
     expect((await new SqliteProfileRepository(target).get())?.weightKg).toBe(80);
-    expect(await new SqliteRoutineRepository(target).list()).toHaveLength(2);
+    expect(await new SqliteRoutineRepository(target).list()).toHaveLength(SEED_ROUTINES.length);
     const [workout] = await new SqliteWorkoutRepository(target).list();
     expect(workout?.setCount).toBe(3);
     expect((await new SqliteStepDayRepository(target).get('2026-11-03'))?.steps).toBe(9000);

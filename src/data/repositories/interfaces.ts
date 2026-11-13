@@ -1,6 +1,7 @@
 import type { BackupFile, ImportResult } from '@/data/backup/backup';
 import type { DemoCounts } from '@/data/seed/demoData';
 import type { StepSource } from '@/domain/enums';
+import type { ActivityDay, ExternalWorkout, IncomingActivityDay, IncomingExternalWorkout } from '@/domain/fitnessTypes';
 import type { FoodMemory, LearnEntry } from '@/domain/foodMemory';
 import type { LocalDate } from '@/domain/localDay';
 import type { DaySummary, Meal, MealDraft, PendingPhoto, PendingPhotoInput, RecentFood } from '@/domain/nutritionTypes';
@@ -93,6 +94,8 @@ export interface WorkoutRepository {
   setExerciseRest(workoutExerciseId: string, seconds: number): Promise<void>;
   setExerciseNotes(workoutExerciseId: string, notes: string | null): Promise<void>;
   moveExercise(workoutExerciseId: string, delta: -1 | 1): Promise<void>;
+  /** Pone los ejercicios del entreno en este orden (los que falten se quedan al final). */
+  reorderExercises(workoutId: string, orderedIds: readonly string[]): Promise<void>;
   /** Cambia el ejercicio conservando las series (las pendientes se rellenan con «anterior»). */
   replaceExercise(workoutExerciseId: string, exerciseId: string): Promise<void>;
   /** Une el ejercicio a la superserie de otro (o crea una nueva con los dos). */
@@ -139,6 +142,16 @@ export interface StepDayRepository {
   saveDays(days: readonly IncomingStepDay[], ctx: StepContext): Promise<number>;
 }
 
+/** Datos de la app Fitness: anillos por día y entrenos del Watch. */
+export interface ActivityRepository {
+  range(from: LocalDate, to: LocalDate): Promise<ActivityDay[]>;
+  /** Lo último que llega manda; lo que no viene no se toca. Devuelve cuántos días cambian. */
+  saveDays(days: readonly IncomingActivityDay[]): Promise<number>;
+  workouts(from: LocalDate, to: LocalDate): Promise<ExternalWorkout[]>;
+  /** Guarda entrenos sin duplicarlos (por su id de Salud). */
+  saveWorkouts(list: readonly IncomingExternalWorkout[]): Promise<number>;
+}
+
 export interface MealRepository {
   /** Comidas de un día local con sus alimentos, por hora. */
   byDate(localDate: LocalDate): Promise<Meal[]>;
@@ -151,6 +164,8 @@ export interface MealRepository {
   daySummaries(from: LocalDate, to: LocalDate): Promise<DaySummary[]>;
   /** Alimentos usados recientemente (sin repetir nombre). */
   recentFoods(limit: number): Promise<RecentFood[]>;
+  /** Comidas con foto (la galería de platos), de la más reciente a la más antigua. */
+  withPhotos(): Promise<Meal[]>;
 }
 
 export interface PendingPhotoRepository {
@@ -187,6 +202,7 @@ export type Repositories = {
   routines: RoutineRepository;
   workouts: WorkoutRepository;
   stepDays: StepDayRepository;
+  activity: ActivityRepository;
   meals: MealRepository;
   pendingPhotos: PendingPhotoRepository;
   foodMemory: FoodMemoryRepository;

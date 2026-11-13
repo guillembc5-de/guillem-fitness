@@ -4,7 +4,7 @@ import type { IncomingStepDay } from '@/domain/stepTypes';
 
 import { decideSource, type HealthState, type SourceDecision } from './decideSource';
 import type { HealthLinkDay } from './healthLink';
-import { getStepPrefs, setLastHealthLink, setStepPrefs } from './prefs';
+import { getFitnessAsked, getStepPrefs, setFitnessAsked, setLastHealthLink, setStepPrefs } from './prefs';
 import { healthProvider } from './providers/health';
 import { pedometerProvider } from './providers/pedometer';
 import type { StepsProvider } from './providers/types';
@@ -88,6 +88,9 @@ export async function syncSteps(): Promise<StepsStatus> {
     sensorRecent: sum(sensorWeek),
   });
 
+  // Fitness (energía activa, minutos y entrenos) sale de Salud aunque los pasos vengan del sensor.
+  if (healthState === 'ok' && healthProvider) await syncFitness(healthProvider, today);
+
   const provider: StepsProvider | null =
     decision.source === 'pedometer' ? pedometerProvider : decision.source && healthProvider ? healthProvider : null;
   if (!provider) return { ...decision, setupDone: true, syncedAt: null, healthError };
@@ -120,10 +123,37 @@ export async function syncSteps(): Promise<StepsStatus> {
   return { ...decision, setupDone: true, syncedAt: Date.now(), healthError };
 }
 
+/** Días hacia atrás que se releen de Fitness en cada sincronización. */
+const FITNESS_DAYS = 14;
+
+/**
+ * Lee los anillos y los entrenos de los últimos días. Nunca lanza: si Salud
+ * no deja (o no hay reloj), simplemente no llega nada.
+ */
+async function syncFitness(provider: StepsProvider, today: LocalDate): Promise<void> {
+  try {
+    // Quien ya tenía Salud conectada debe aceptar también estos datos (una sola vez).
+    if (!getFitnessAsked()) {
+      setFitnessAsked();
+      await provider.requestPermission();
+    }
+    const from = addDays(today, -(FITNESS_DAYS - 1));
+    const repos = getRepositories();
+    if (provider.dailyFitness) {
+      const days = await provider.dailyFitness(from, today);
+      await repos.activity.saveDays([...days].map(([localDate, v]) => ({ localDate, ...v, source: 'healthkit' as const })));
+    }
+    if (provider.workouts) await repos.activity.saveWorkouts(await provider.workouts(from, today));
+  } catch {
+    // Sin permiso o sin datos de Fitness: los pasos siguen funcionando igual.
+  }
+}
+
 /** Primera vez: pide Salud y, como respaldo, el sensor de movimiento. */
 export async function setupWithHealth(): Promise<void> {
   if (healthProvider && (await healthProvider.isAvailable())) {
     try {
+      setFitnessAsked();
       await healthProvider.requestPermission();
     } catch {
       // Sin HealthKit (por ejemplo, compilada sin él): seguirá con el sensor.
@@ -152,16 +182,27 @@ export async function setupSensorOnly(): Promise<void> {
 }
 
 /**
- * Guarda los pasos que manda un Atajo desde la app Salud (ver healthLink.ts).
- * Cuentan como datos de Salud; si el sensor tiene más ese día, se queda el mayor.
+ * Guarda lo que manda un Atajo desde la app Salud (ver healthLink.ts).
+ * Los pasos cuentan como datos de Salud (si el sensor tiene más ese día, se
+ * queda el mayor). La energía activa y los minutos van a Fitness.
  */
 export async function importHealthLinkDays(days: readonly HealthLinkDay[]): Promise<number> {
   const repos = getRepositories();
   const profile = await repos.profile.get();
   if (!profile) throw new Error('Primero completa tu perfil');
-  const changed = await repos.stepDays.saveDays(
-    days.map((d) => ({ localDate: d.localDate, steps: d.steps, source: 'healthkit' as const })),
-    { sex: profile.sex, heightCm: profile.heightCm, weightKg: profile.weightKg, stepGoal: profile.stepGoal, today: todayLocalDate() },
+  const stepDays: IncomingStepDay[] = days.flatMap((d) => (d.steps === undefined ? [] : [{ localDate: d.localDate, steps: d.steps, source: 'healthkit' as const }]));
+  let changed = 0;
+  if (stepDays.length > 0) {
+    changed += await repos.stepDays.saveDays(stepDays, {
+      sex: profile.sex,
+      heightCm: profile.heightCm,
+      weightKg: profile.weightKg,
+      stepGoal: profile.stepGoal,
+      today: todayLocalDate(),
+    });
+  }
+  changed += await repos.activity.saveDays(
+    days.map((d) => ({ localDate: d.localDate, activeKcal: d.activeKcal, exerciseMin: d.exerciseMin, source: 'shortcut' as const })),
   );
   setStepPrefs({ setupDone: true });
   setLastHealthLink({ at: Date.now(), days: days.length, lastDate: days[days.length - 1]?.localDate ?? null });

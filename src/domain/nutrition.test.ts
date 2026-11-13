@@ -73,4 +73,11 @@ describe('balance del día', () => {
     const b = dailyBalance(2250, 1850, 260, 300);
     expect(b).toMatchObject({ steps: 260, workouts: 300, burned: 560, remaining: 960, net: 1290 });
   });
+  it('con Fitness se usa la mayor cifra: nunca se suman', () => {
+    // El reloj midió más que la estimación: manda Fitness (ya incluye pasos y entreno).
+    expect(dailyBalance(2250, 1850, 260, 300, 720)).toMatchObject({ burned: 720, usesFitness: true, remaining: 1120 });
+    // Sin reloj en el gimnasio, Fitness se queda corto: manda la estimación.
+    expect(dailyBalance(2250, 1850, 260, 300, 400)).toMatchObject({ burned: 560, usesFitness: false, fitness: 400 });
+    expect(dailyBalance(2250, 1850, 260, 300, null)).toMatchObject({ burned: 560, usesFitness: false, fitness: null });
+  });
 });

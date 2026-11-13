@@ -2,7 +2,7 @@ import { router, useLocalSearchParams, useNavigation, usePreventRemove } from 'e
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { AppText, Button, Card, Icon, LoadingState, Screen, TextField, colors, radii, showActionSheet, spacing } from '@/design';
+import { AppText, Button, Card, Icon, LoadingState, Screen, TextField, colors, radii, showActionSheet, showReorderSheet, spacing } from '@/design';
 import { SET_TYPES } from '@/domain/enums';
 import { formatDuration } from '@/domain/format';
 import { supersetLetters } from '@/domain/supersets';
@@ -117,7 +117,7 @@ type CardProps = {
   supersetLetter: string | null;
 };
 
-function ExerciseEditorCard({ exercise: e, index, all, unitLabel, supersetLetter }: CardProps) {
+function ExerciseEditorCard({ exercise: e, all, unitLabel, supersetLetter }: CardProps) {
   const store = useRoutineDraft.getState();
   const weightLabel = weightColumnLabel(e.trackingType);
   const isDuration = e.trackingType === 'duration';
@@ -128,23 +128,29 @@ function ExerciseEditorCard({ exercise: e, index, all, unitLabel, supersetLetter
       all.filter((o) => o.key !== e.key).map((o) => ({ label: o.name, onPress: () => store.joinSuperset(e.key, o.key) })),
     );
 
+  const reorder = () =>
+    showReorderSheet(
+      'Reordenar ejercicios',
+      all.map((o) => ({ key: o.key, label: o.name, caption: `${o.sets.length} ${o.sets.length === 1 ? 'serie' : 'series'}` })),
+      (keys) => store.reorderExercises(keys),
+    );
+
+  // Mismo orden que el menú de Hevy.
   const openMenu = () =>
-    showActionSheet(e.name, [
-      ...(e.supersetId
-        ? [{ label: 'Quitar de la superserie', onPress: () => store.leaveSuperset(e.key) }]
-        : all.length > 1
-          ? [{ label: 'Hacer superserie con…', onPress: chooseSupersetPartner }]
-          : []),
-      ...(index > 0 ? [{ label: 'Subir', onPress: () => store.moveExercise(e.key, -1) }] : []),
-      ...(index < all.length - 1 ? [{ label: 'Bajar', onPress: () => store.moveExercise(e.key, 1) }] : []),
+    showActionSheet(null, [
+      { label: 'Reordenar ejercicios', icon: 'swap-vertical', disabled: all.length < 2, onPress: reorder },
       {
-        label: 'Sustituir ejercicio',
+        label: 'Reemplazar ejercicio',
+        icon: 'sync',
         onPress: () => {
           store.startReplacing(e.key);
           router.push({ pathname: '/elegir-ejercicio', params: { target: 'routine-replace' } });
         },
       },
-      { label: 'Quitar de la rutina', destructive: true, onPress: () => store.removeExercise(e.key) },
+      e.supersetId
+        ? { label: 'Quitar de la superserie', icon: 'remove', onPress: () => store.leaveSuperset(e.key) }
+        : { label: 'Agregar a superserie', icon: 'add', disabled: all.length < 2, onPress: chooseSupersetPartner },
+      { label: 'Eliminar ejercicio', icon: 'close', destructive: true, onPress: () => store.removeExercise(e.key) },
     ]);
 
   const chooseRest = () =>

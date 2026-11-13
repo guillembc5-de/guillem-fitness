@@ -1,8 +1,9 @@
 import { router, Stack, useLocalSearchParams, useNavigation, usePreventRemove } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppText, Button, Card, Chip, Icon, Screen, SegmentedControl, colors, radii, spacing } from '@/design';
+import { aiEstimateFor, dishTitle, galleryDishes, photoFileName, similarDishes, type GalleryDish, type SimilarDish } from '@/domain/dishGallery';
 import { MEAL_TYPES, type MealType } from '@/domain/enums';
 import { formatNumber } from '@/domain/format';
 import { fromLocalDate, isLocalDate, todayLocalDate, type LocalDate } from '@/domain/localDay';
@@ -14,16 +15,17 @@ import { useProfile } from '@/features/profile/queries';
 import { emptyRow, rowFromDraft, rowToDraft, rowTotals, type FoodRow } from '@/features/nutrition/foodDraft';
 import { FoodRowEditor } from '@/features/nutrition/FoodRowEditor';
 import { MEAL_LABELS } from '@/features/nutrition/labels';
-import { preparePhoto, readPhotoBase64 } from '@/features/nutrition/photos';
-import { applyMemory, promptHints, type LearnEntry } from '@/domain/foodMemory';
+import { preparePhoto, readPhotoBase64, resolvePhotoUri } from '@/features/nutrition/photos';
+import { applyMemory, promptHints, type FoodMemory, type LearnEntry } from '@/domain/foodMemory';
 import { useDeleteMeal, useLearnFoods, useRecentFoods, useSaveMeal, useSavePending } from '@/features/nutrition/queries';
 import { analyzeFood } from '@/features/nutrition/vision/analyze';
 import { getVisionProvider } from '@/features/nutrition/vision/provider';
 import { canRetryLater, VisionError, VISION_ERROR_TEXT } from '@/features/nutrition/vision/types';
+import { formatLongDay } from '@/features/steps/labels';
 import { now } from '@/lib/ids';
 
 type Params = {
-  mode?: 'photo' | 'manual' | 'edit' | 'pending';
+  mode?: 'photo' | 'manual' | 'edit' | 'pending' | 'reuse';
   uri?: string;
   w?: string;
   h?: string;
@@ -48,7 +50,8 @@ function asMealType(value: string | undefined): MealType | null {
 
 /**
  * Añadir o editar una comida: por foto (la IA estima), a mano, desde una foto
- * pendiente o editando una ya guardada. Nada se suma al día hasta pulsar Guardar.
+ * pendiente, repitiendo un plato de la galería o editando una ya guardada.
+ * Nada se suma al día hasta pulsar Guardar.
  */
 export default function MealScreen() {
   const params = useLocalSearchParams<Params>();
@@ -61,7 +64,7 @@ export default function MealScreen() {
   const [mealType, setMealType] = useState<MealType>(() => asMealType(params.mealType) ?? (isToday ? mealTypeForTime(now()) : 'lunch'));
   const [rows, setRows] = useState<FoodRow[]>(() => (mode === 'manual' ? [emptyRow()] : []));
   const [phase, setPhase] = useState<Phase>(() =>
-    mode === 'manual' ? { kind: 'review' } : { kind: 'loading', label: mode === 'edit' ? 'Cargando…' : 'Preparando la foto…' },
+    mode === 'manual' ? { kind: 'review' } : { kind: 'loading', label: mode === 'edit' || mode === 'reuse' ? 'Cargando…' : 'Preparando la foto…' },
   );
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [aiProvider, setAiProvider] = useState<AiProvider | null>(null);
@@ -71,6 +74,11 @@ export default function MealScreen() {
   const [done, setDone] = useState(false);
   const base64 = useRef<string | null>(null);
   const started = useRef(false);
+  // Platos de tu galería parecidos a lo que ve la IA, y la estimación original por si quieres volver a ella.
+  const [suggestions, setSuggestions] = useState<SimilarDish[]>([]);
+  const [usedDish, setUsedDish] = useState<GalleryDish | null>(null);
+  const aiRows = useRef<FoodRow[]>([]);
+  const memoriesRef = useRef<readonly FoodMemory[]>([]);
 
   const saveMeal = useSaveMeal();
   const deleteMeal = useDeleteMeal();
@@ -95,7 +103,23 @@ export default function MealScreen() {
     const result = await analyzeFood(provider, data, promptHints(memories) || undefined);
     setAiProvider(profile.data.aiProvider);
     if (result.status === 'ok') {
-      setRows(applyMemory(result.items, memories).map((i) => rowFromDraft(i, true, i)));
+      const estimated = applyMemory(result.items, memories).map((i) => rowFromDraft(i, true, i));
+      aiRows.current = estimated;
+      memoriesRef.current = memories;
+      setUsedDish(null);
+      setRows(estimated);
+      // ¿Se parece a un plato que ya guardaste? Se propone; tú decides.
+      const dishes = await getRepositories()
+        .meals.withPhotos()
+        .then(galleryDishes)
+        .catch(() => []);
+      setSuggestions(
+        similarDishes(
+          estimated.map((r) => r.name),
+          dishes,
+          memories,
+        ),
+      );
       setDirty(true);
       setPhase({ kind: 'review' });
     } else if (result.status === 'no_food') {
@@ -122,6 +146,17 @@ export default function MealScreen() {
           setPhotoUri(meal.photoUri);
           setAiProvider(meal.aiProvider);
           setEatenAt(meal.eatenAt);
+          setPhase({ kind: 'review' });
+        } else if (mode === 'reuse' && params.mealId) {
+          // Repetir un plato de la galería: mismos alimentos y foto, como comida nueva.
+          const meal = await getRepositories().meals.get(params.mealId);
+          if (!meal) {
+            router.back();
+            return;
+          }
+          setRows(meal.items.map((i) => rowFromDraft({ ...i, aiEstimated: false })));
+          setPhotoUri(meal.photoUri);
+          setAiProvider(meal.aiProvider);
           setPhase({ kind: 'review' });
         } else if (mode === 'photo' && params.uri) {
           const prepared = await preparePhoto({ uri: params.uri, width: Number(params.w) || 0, height: Number(params.h) || 0 });
@@ -185,6 +220,25 @@ export default function MealScreen() {
     );
   };
 
+  /** Sustituye la estimación de la IA por los valores confirmados de un plato guardado. */
+  const applyDish = (dish: GalleryDish) => {
+    setFormError(null);
+    setDirty(true);
+    setUsedDish(dish);
+    setRows(
+      dish.latest.items.map((i) => {
+        // Se conserva lo que estimó la IA para seguir aprendiendo de la diferencia de gramos.
+        const estimate = aiEstimateFor(i.name, aiRows.current, memoriesRef.current);
+        return rowFromDraft({ ...i, aiEstimated: false }, false, estimate ? { ...estimate, learned: [] } : null);
+      }),
+    );
+  };
+
+  const backToAi = () => {
+    setUsedDish(null);
+    setRows(aiRows.current);
+  };
+
   const updateRow = (key: string, patch: Partial<FoodRow>) => {
     setFormError(null);
     setDirty(true);
@@ -234,7 +288,9 @@ export default function MealScreen() {
   const total = sumTotals(rows.map(rowTotals));
   const anyAi = rows.some((r) => r.aiEstimated);
   const learnedCount = rows.filter((r) => r.learned.length > 0).length;
-  const title = mode === 'edit' ? 'Editar comida' : photoUri || mode === 'photo' ? 'Revisar comida' : 'Añadir comida';
+  const title = mode === 'edit' ? 'Editar comida' : mode === 'reuse' ? 'Repetir plato' : photoUri || mode === 'photo' ? 'Revisar comida' : 'Añadir comida';
+  const ownPhoto = photoUri ? photoFileName(photoUri) : '';
+  const offered = suggestions.filter((sug) => sug.dish.key !== ownPhoto);
 
   return (
     <Screen
@@ -262,7 +318,7 @@ export default function MealScreen() {
     >
       <Stack.Screen options={{ title }} />
 
-      {photoUri ? <Image source={{ uri: photoUri }} style={styles.photo} accessibilityLabel="Foto de la comida" /> : null}
+      {photoUri ? <Image source={{ uri: resolvePhotoUri(photoUri) }} style={styles.photo} accessibilityLabel="Foto de la comida" /> : null}
 
       {phase.kind === 'loading' ? (
         <Card style={styles.center}>
@@ -344,6 +400,54 @@ export default function MealScreen() {
             </Card>
           ) : null}
 
+          {mode === 'reuse' ? (
+            <Card style={styles.learnedBanner}>
+              <Icon name="images-outline" color="info" />
+              <AppText variant="caption" color="text" style={styles.flex}>
+                Plato de tu galería, con los valores que confirmaste. Ajusta los gramos si hoy la ración es distinta y pulsa Guardar.
+              </AppText>
+            </Card>
+          ) : null}
+          {usedDish ? (
+            <Card style={styles.dishUsed}>
+              <View style={styles.dishUsedRow}>
+                <Icon name="images-outline" color="info" />
+                <AppText variant="caption" color="text" style={styles.flex}>
+                  Valores de tu plato del {formatLongDay(usedDish.latest.localDate)}. Ajusta los gramos si hoy la ración es distinta.
+                </AppText>
+              </View>
+              <Button title="Volver a la estimación de la IA" variant="ghost" compact onPress={backToAi} />
+            </Card>
+          ) : offered.length > 0 ? (
+            <View style={styles.recent}>
+              <AppText variant="bodyStrong">¿Es uno de tus platos guardados?</AppText>
+              <AppText variant="caption" color="textSecondary">
+                Toca uno para usar los valores que ya confirmaste en vez de la estimación.
+              </AppText>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} keyboardShouldPersistTaps="handled">
+                {offered.map(({ dish }) => (
+                  <Pressable
+                    key={dish.key}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Usar tu plato: ${dishTitle(dish.latest)}, ${formatNumber(dish.totals.kcal)} kilocalorías`}
+                    onPress={() => applyDish(dish)}
+                    style={({ pressed }) => [styles.dish, pressed ? styles.dishPressed : null]}
+                  >
+                    <Image source={{ uri: resolvePhotoUri(dish.photoUri) }} style={styles.dishPhoto} />
+                    <View style={styles.dishText}>
+                      <AppText variant="caption" color="text" numberOfLines={2}>
+                        {dishTitle(dish.latest, 2)}
+                      </AppText>
+                      <AppText variant="caption" color="textSecondary">
+                        {formatNumber(dish.totals.kcal)} kcal{dish.timesUsed > 1 ? ` · ×${dish.timesUsed}` : ''}
+                      </AppText>
+                    </View>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
+
           <SegmentedControl accessibilityLabel="Comida del día" options={MEAL_OPTIONS} value={mealType} onChange={setMealType} />
 
           {rows.map((row) => (
@@ -402,6 +506,12 @@ const styles = StyleSheet.create({
   stretch: { alignSelf: 'stretch' },
   aiBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderWidth: 1, borderColor: colors.warmup },
   learnedBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderWidth: 1, borderColor: colors.info },
+  dishUsed: { gap: spacing.xs, borderWidth: 1, borderColor: colors.info },
+  dishUsedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  dish: { width: 132, borderRadius: radii.md, overflow: 'hidden', backgroundColor: colors.surface },
+  dishPressed: { opacity: 0.7 },
+  dishPhoto: { width: 132, height: 99, backgroundColor: colors.surfaceRaised },
+  dishText: { padding: spacing.xs, gap: 2 },
   flex: { flex: 1 },
   recent: { gap: spacing.xs },
   chips: { gap: spacing.xs },

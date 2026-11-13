@@ -90,7 +90,11 @@ export type DailyBalance = {
   steps: number;
   /** kcal quemadas en los entrenos. */
   workouts: number;
-  /** Total quemado: pasos + entrenos. */
+  /** Energía activa de Fitness (Apple Watch), si llegó. */
+  fitness: number | null;
+  /** true si el quemado es el de Fitness (mayor que la estimación de pasos + entrenos). */
+  usesFitness: boolean;
+  /** Total quemado: pasos + entrenos, o Fitness si es mayor (nunca se suman). */
   burned: number;
   /** Lo que queda: objetivo − comido + quemado. Negativo = te has pasado. */
   remaining: number;
@@ -98,9 +102,16 @@ export type DailyBalance = {
   net: number;
 };
 
-/** Balance del día: lo comido suma (verde); lo quemado caminando y entrenando resta (rojo). */
-export function dailyBalance(target: number, eaten: number, steps: number, workouts = 0): DailyBalance {
-  const burned = steps + workouts;
+/**
+ * Balance del día: lo comido suma (verde); lo quemado resta (rojo).
+ * Quemado = pasos + entrenos (estimación de la app). Si llega la energía
+ * activa de Fitness, que ya incluye caminar y entrenar, se usa la mayor de
+ * las dos cifras: así no se cuenta dos veces y un día sin reloj no resta de menos.
+ */
+export function dailyBalance(target: number, eaten: number, steps: number, workouts = 0, fitness: number | null = null): DailyBalance {
+  const estimate = steps + workouts;
+  const usesFitness = fitness !== null && fitness > estimate;
+  const burned = usesFitness ? fitness : estimate;
   const net = eaten - burned;
-  return { target, eaten, steps, workouts, burned, net, remaining: target - net };
+  return { target, eaten, steps, workouts, fitness, usesFitness, burned, net, remaining: target - net };
 }

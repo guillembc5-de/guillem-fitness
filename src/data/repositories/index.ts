@@ -1,5 +1,6 @@
 import { db } from '../db/client';
 import type { Repositories } from './interfaces';
+import { SqliteActivityRepository } from './sqlite/activityRepository';
 import { SqliteDataRepository } from './sqlite/dataRepository';
 import { SqliteExerciseRepository } from './sqlite/exerciseRepository';
 import { SqliteFoodMemoryRepository } from './sqlite/foodMemoryRepository';
@@ -25,6 +26,7 @@ export function getRepositories(): Repositories {
     routines: new SqliteRoutineRepository(db),
     workouts: new SqliteWorkoutRepository(db),
     stepDays: new SqliteStepDayRepository(db),
+    activity: new SqliteActivityRepository(db),
     meals: new SqliteMealRepository(db),
     pendingPhotos: new SqlitePendingPhotoRepository(db),
     foodMemory: new SqliteFoodMemoryRepository(db),

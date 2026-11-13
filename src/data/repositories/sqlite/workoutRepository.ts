@@ -184,6 +184,20 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
     this.writePositions(ids);
   }
 
+  async reorderExercises(workoutId: string, orderedIds: readonly string[]): Promise<void> {
+    const current = this.db
+      .select({ id: workoutExercise.id })
+      .from(workoutExercise)
+      .where(and(eq(workoutExercise.workoutId, workoutId), isNull(workoutExercise.deletedAt)))
+      .orderBy(asc(workoutExercise.position))
+      .all()
+      .map((r) => r.id);
+    const known = new Set(current);
+    const first = [...new Set(orderedIds)].filter((id) => known.has(id));
+    const picked = new Set(first);
+    this.writePositions([...first, ...current.filter((id) => !picked.has(id))]);
+  }
+
   async replaceExercise(workoutExerciseId: string, exerciseId: string): Promise<void> {
     const ex = this.db.select().from(exercise).where(eq(exercise.id, exerciseId)).get();
     const we = this.db.select().from(workoutExercise).where(eq(workoutExercise.id, workoutExerciseId)).get();

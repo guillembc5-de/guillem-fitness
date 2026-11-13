@@ -12,6 +12,9 @@ Todo se guarda en el móvil: sin cuentas, sin nube y sin anuncios.
 | 5 | Calorías: foto → IA → revisión, entrada manual, resumen diario, historial y pendientes | ✅ |
 | 6 | Pulido: exportar/importar JSON, datos de prueba, contraste AA verificado, arranque más ligero | ✅ |
 | 7 | Entreno como Hevy, kcal de entrenos, fotos que aprenden de tus correcciones, Salud con Atajos | ✅ (sin probar en el iPhone) |
+| 8 | Menú «⋮» del ejercicio como Hevy, lower 2, upper 2, RECUPERACIÓ CREUATS, icono de Goku, Atajo en catalán | ✅ (sin probar en el iPhone) |
+| 9 | Datos de Fitness: energía activa, minutos de ejercicio y entrenos del Watch | ✅ (sin probar en el iPhone) |
+| 10 | Galería de platos: fotos de comida guardadas para repetirlas y afinar las estimaciones | ✅ (sin probar en el iPhone) |
 
 **Pendiente de comprobar en el iPhone real** (no se puede probar sin Mac ni móvil): la primera compilación (en GitHub o en el Mac), HealthKit con Apple ID gratuito, las notificaciones con la app cerrada y la llamada real a Gemini o Claude. Si algo falla, el error de GitHub Actions o una captura bastan para arreglarlo.
 
@@ -20,18 +23,20 @@ Todo se guarda en el móvil: sin cuentas, sin nube y sin anuncios.
 ## Lo que hace la app
 
 - **Entreno** (las funciones del apartado de entreno de Hevy):
-  - 143 ejercicios en español (buscador sin tildes, filtros por músculo y material, ejercicios propios). Tus rutinas lower 1 y upper 1 precargadas.
+  - 152 ejercicios en español (buscador sin tildes, filtros por músculo y material, ejercicios propios). Tus rutinas precargadas: **lower 1, upper 1, lower 2, upper 2** (copiadas de tus vídeos de Hevy) y **RECUPERACIÓ CREUATS** (la pauta del fisio; lo que la pizarra no dice va vacío). Si ya tenías la app, las que falten se añaden al final al abrirla; las que borres no vuelven.
   - **Rutinas** en **carpetas**, con notas por ejercicio, superseries, descanso por ejercicio y series objetivo. Duplicar, ordenar, mover de carpeta.
-  - **Entreno en vivo:** cronómetro, volumen y series en directo; columna «Anterior» (de cualquier entreno o de la misma rutina); tipos de serie **normal, calentamiento (W), drop set (D) y al fallo (F)**; **RPE** opcional; **superseries** (el descanso llega tras el último ejercicio del grupo); **notas** del entreno y nota fija del ejercicio; **subir, bajar, sustituir** o quitar ejercicios; **calculadora de discos**; **series de calentamiento** automáticas; **cronómetro** en ejercicios por tiempo; aviso y vibración al batir un **récord** (1RM, peso, volumen o repeticiones); pantalla siempre encendida.
+  - **Entreno en vivo:** cronómetro, volumen y series en directo; columna «Anterior» (de cualquier entreno o de la misma rutina); tipos de serie **normal, calentamiento (W), drop set (D) y al fallo (F)**; **RPE** opcional; **superseries** (el descanso llega tras el último ejercicio del grupo); **notas** del entreno y nota fija del ejercicio; menú **«⋮»** del ejercicio como el de Hevy (**reordenar ejercicios**, **reemplazar**, **agregar a superserie**, **eliminar**, y además calentamiento, discos y descanso); **calculadora de discos**; **series de calentamiento** automáticas; **cronómetro** en ejercicios por tiempo; aviso y vibración al batir un **récord** (1RM, peso, volumen o repeticiones); pantalla siempre encendida.
   - Descanso automático con aviso aunque la app esté cerrada. Si cierras la app a la fuerza, vuelves al mismo punto.
   - Al terminar, si cambiaste la rutina, pregunta si **actualizarla**. Resumen con nº de entreno, racha semanal y récords.
   - **Historial** en lista, **calendario** y **estadísticas** (entrenos, volumen y duración por semana; series por músculo). Cada entreno se puede **editar** (series, nombre, nota, fecha, hora y duración), **repetir** o **guardar como rutina**.
   - Ajustes en Perfil → Entreno: RPE, discos y barra, «Anterior», avisos de récord y pantalla encendida.
   - No incluye lo que necesita servidores o contenido de Hevy: vídeos de ejercicios, programas para descargar, parte social ni fotos en los entrenos.
 - **Pasos:** anillo del día, km, kcal y racha; semana, mes y calendario por colores; una sola fuente (Salud o, si no hay permiso, el sensor del iPhone). Si la instalación no puede leer Salud, un **Atajo** te trae los pasos de Salud y del Apple Watch (Perfil → Salud con Atajos).
-- **Calorías:** foto → la IA estima → tú corriges → guardas. También a mano. Resumen con lo comido en verde (+) y lo quemado en rojo (−): **pasos y entrenos** por separado, macros, comidas del día, historial y fotos pendientes si no hay conexión.
+  - **Fitness:** energía activa (anillo Moverse) y minutos de ejercicio (anillo Ejercicio) llegan por el mismo Atajo (`&energia=…&ejercicio=…`) o, si Salud directo funciona, solos. Los **entrenos del Watch** (correr, caminar, bici…) solo llegan con Salud directo; por el Atajo no se pueden leer bien, pero sus calorías ya van dentro de la energía activa. Se ven en Pasos y en el detalle de cada día del calendario.
+- **Calorías:** foto → la IA estima → tú corriges → guardas. También a mano. Resumen con lo comido en verde (+) y lo quemado en rojo (−): **pasos y entrenos** por separado (o, si el Apple Watch mide más, una sola línea «Actividad (Fitness)»: se usa la mayor cifra y nunca se suman), macros, comidas del día, historial y fotos pendientes si no hay conexión.
   - **Kcal de un entreno** = (MET 4 − 1) × tu peso × horas: lo extra sobre el reposo, como con los pasos (por ejemplo, 75 min con 80 kg ≈ 300 kcal). Un entreno olvidado abierto cuenta 3 h como máximo.
   - Por eso el **nivel de actividad** del perfil describe ahora solo tu día a día, sin caminar ni gimnasio. **Revísalo en Perfil → Datos y objetivos.**
+  - **Galería de platos** (icono de imágenes en Calorías, o «Añadir comida → Repetir un plato guardado»): todas las comidas guardadas con foto, con los valores que confirmaste. Buscar por alimento, ordenar por recientes o más repetidos. Cada plato se puede **añadir a hoy** (revisas los gramos y guardas) o **corregir**. Al analizar una foto nueva, si la IA ve alimentos parecidos a un plato guardado, la app te lo propone («¿Es uno de tus platos guardados?») y con un toque usas tus valores en vez de la estimación. Las fotos viven solo en el iPhone (≈150 KB cada una) y **no van en la copia de seguridad JSON**: si borras la app, se pierden; al reinstalar encima con Sideloadly, se conservan.
   - **Las fotos mejoran con el uso:** la app recuerda los alimentos que guardas con tus valores, se los pasa a la IA junto a la foto y, si la IA suele quedarse corta o pasarse con las raciones, lo corrige sola. La IA no se reentrena: aprende la app, de tus correcciones. Se puede borrar en Perfil → Análisis de fotos.
 - **Perfil:** datos y objetivos, clave de la IA con «Probar conexión», copia de seguridad en JSON y datos de prueba.
 
@@ -175,18 +180,15 @@ En el paso A2, elige **release**. Se instala igual y aparece como **Guillem Fitn
 
 Apple permite HealthKit con un Apple ID gratuito, y el `.ipa` ya lleva el permiso. Si en **Pasos** sale «Salud no está disponible», lo más probable es que Sideloadly lo haya quitado al firmar. El aviso muestra un **Detalle técnico** con el error exacto.
 
-**Prueba para conservar el permiso:**
-1. En Sideloadly, abre **Advanced Options** y marca **Use custom entitlements**.
-2. Pulsa **Browse** y elige `sideloadly\GuillemFitness.entitlements`, de la carpeta del proyecto.
-3. Pulsa **Start** como siempre y, en el iPhone, abre **Pasos → Reintentar**.
+La opción **Use custom entitlements** de Sideloadly, que podría conservarlo, es **de pago** (solo para mecenas de Patreon). No hace falta: usa la alternativa gratis con **Atajos** (más abajo). Deja esa casilla **desmarcada** al instalar.
 
-**Si sigue sin funcionar**, o Sideloadly da un error de *entitlements*:
+**Si no quieres usar Atajos:**
 1. En el aviso, pulsa **Usar solo el sensor y ocultar este aviso**. Si Sideloadly no deja instalar, vuelve a compilar (paso A2) **desmarcando «Incluir HealthKit»**.
 2. La app contará los pasos con el **podómetro del iPhone**. Sin Apple Watch, es el mismo sensor que usa Salud.
 3. Como el podómetro solo guarda 7 días, la app apunta cada día en su base de datos para que el calendario no se vacíe.
 4. Con un Mac (Opción B), Xcode sí activa el permiso de Salud con tu Apple ID gratuito.
 
-**Alternativa sin permiso de HealthKit: Atajos.** Un Atajo del iPhone lee tus pasos en la app Salud (también los del Apple Watch) y los pasa a la app con el enlace `guillemfitness://salud?fecha=…&pasos=…`. Los pasos para crearlo están dentro de la app, en **Perfil → Salud con Atajos** (o en el aviso de Pasos → «Conectar Salud con Atajos»). Con una automatización «al abrir Guillem Fitness», se hace solo.
+**Alternativa sin permiso de HealthKit: Atajos.** Un Atajo del iPhone lee tus pasos en la app Salud (también los del Apple Watch) y los pasa a la app con el enlace `guillemfitness://salud?pasos=…` (son 4 acciones). Los pasos para crearlo están dentro de la app, en castellano o en catalán (Dreceres), en **Perfil → Salud con Atajos** (o en el aviso de Pasos → «Conectar Salud con Atajos»). Con una automatización «al abrir Guillem Fitness», se hace solo.
 
 ---
 

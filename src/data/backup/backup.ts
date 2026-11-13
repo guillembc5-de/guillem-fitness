@@ -29,6 +29,8 @@ const TABLES: readonly (readonly [string, SQLiteTable])[] = [
   ['workoutExercise', schema.workoutExercise],
   ['workoutSet', schema.workoutSet],
   ['stepDay', schema.stepDay],
+  ['activityDay', schema.activityDay],
+  ['externalWorkout', schema.externalWorkout],
   ['meal', schema.meal],
   ['foodItem', schema.foodItem],
   ['pendingPhoto', schema.pendingPhoto],
@@ -103,13 +105,16 @@ export function importBackup(db: Db, data: unknown): ImportResult {
         const updatedAt = Number(row.updatedAt);
         const existing = tx.get<{ updated_at: number }>(sql`select updated_at from ${table} where id = ${id}`);
 
-        // Una sola fila de perfil y un solo registro de pasos por día: si
-        // existe otro con distinto id, se queda el más reciente.
-        if (!existing && (table === schema.profile || table === schema.stepDay)) {
+        // Una sola fila de perfil, un registro de pasos y de Fitness por día y
+        // un entreno del Watch por id de Salud: si existe otro con distinto id,
+        // se queda el más reciente.
+        if (!existing && (table === schema.profile || table === schema.stepDay || table === schema.activityDay || table === schema.externalWorkout)) {
           const clash =
             table === schema.profile
               ? tx.get<{ id: string; updated_at: number }>(sql`select id, updated_at from ${table} limit 1`)
-              : tx.get<{ id: string; updated_at: number }>(sql`select id, updated_at from ${table} where local_date = ${row.localDate ?? null}`);
+              : table === schema.externalWorkout
+                ? tx.get<{ id: string; updated_at: number }>(sql`select id, updated_at from ${table} where external_id = ${row.externalId ?? null}`)
+                : tx.get<{ id: string; updated_at: number }>(sql`select id, updated_at from ${table} where local_date = ${row.localDate ?? null}`);
           if (clash) {
             if (clash.updated_at >= updatedAt) {
               result.skipped += 1;

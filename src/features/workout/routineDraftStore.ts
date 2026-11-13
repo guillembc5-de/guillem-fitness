@@ -39,6 +39,7 @@ type State = {
   replaceExercise: (key: string, exercise: Exercise) => void;
   removeExercise: (key: string) => void;
   moveExercise: (key: string, delta: -1 | 1) => void;
+  reorderExercises: (keys: readonly string[]) => void;
   setRest: (key: string, seconds: number | null) => void;
   setNotes: (key: string, notes: string) => void;
   joinSuperset: (key: string, withKey: string) => void;
@@ -140,6 +141,16 @@ export const useRoutineDraft = create<State>((set) => ({
       next[i] = b;
       next[j] = a;
       return { dirty: true, exercises: next };
+    }),
+  reorderExercises: (keys) =>
+    set((st) => {
+      const byKey = new Map(st.exercises.map((e) => [e.key, e]));
+      const first = keys.flatMap((k) => {
+        const e = byKey.get(k);
+        byKey.delete(k);
+        return e ? [e] : [];
+      });
+      return { dirty: true, exercises: [...first, ...byKey.values()] };
     }),
   setRest: (k, seconds) =>
     set((st) => ({ dirty: true, exercises: st.exercises.map((e) => (e.key === k ? { ...e, restSeconds: seconds } : e)) })),

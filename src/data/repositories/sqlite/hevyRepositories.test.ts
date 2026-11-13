@@ -194,3 +194,16 @@ describe('memoria de alimentos', () => {
     expect((await memory.list())[0]).toMatchObject({ timesConfirmed: 1, aiSamples: 0 });
   });
 });
+
+describe('reordenar ejercicios (menú «⋯» → Reordenar ejercicios)', () => {
+  it('aplica el orden nuevo y deja al final los que no vengan en la lista', async () => {
+    const lower = (await routines.list()).find((r) => r.name === 'lower 1');
+    const id = await workouts.start({ routineId: lower?.id ?? null, name: 'lower 1', defaultRestSeconds: 150 });
+    const before = (await workouts.get(id))?.exercises.map((e) => e.id) ?? [];
+    const [a, b, c, ...rest] = before;
+    if (!a || !b || !c) throw new Error('faltan ejercicios');
+    await workouts.reorderExercises(id, [c, a, 'no-existe', b]);
+    const after = (await workouts.get(id))?.exercises.map((e) => e.id);
+    expect(after).toEqual([c, a, b, ...rest]);
+  });
+});
