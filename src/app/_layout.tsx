@@ -15,6 +15,7 @@ import { ActionSheetHost, ErrorState, LoadingState, ReorderSheetHost, colors } f
 import { stackScreenOptions } from '@/design/stackOptions';
 import { useProfile } from '@/features/profile/queries';
 import { configureNotifications } from '@/features/workout/restTimer';
+import { useHevyAutoSync } from '@/features/workout/useHevyAutoSync';
 import { queryClient } from '@/lib/queryClient';
 
 import migrations from '../../drizzle/migrations';
@@ -85,6 +86,7 @@ function DatabaseGate() {
 
 function AppNavigator() {
   const profile = useProfile();
+  useHevyAutoSync();
 
   useEffect(() => {
     if (!profile.isPending) void SplashScreen.hideAsync();

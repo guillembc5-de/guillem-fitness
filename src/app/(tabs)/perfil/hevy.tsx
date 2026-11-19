@@ -179,7 +179,7 @@ function ApiCard({ onSynced }: { onSynced: (r: HevyImportResult) => void }) {
     <Card style={styles.card}>
       <AppText variant="body" color="textSecondary">
         Hevy solo deja que otras apps lean tus entrenos solas (su API) si pagas Hevy Pro: unos 2,99 $ al mes o 23,99 $ al año. Tu cuenta es gratuita,
-        así que usa el archivo de arriba. Si algún día te haces Pro, pega aquí tu clave y la app se sincronizará sola cada vez que abras Entreno.
+        así que usa el archivo de arriba. Si algún día te haces Pro, pega aquí tu clave y tus entrenos de Hevy entrarán solos cada vez que abras la app.
       </AppText>
       <Button
         title="Dónde está la clave (hevy.com)"

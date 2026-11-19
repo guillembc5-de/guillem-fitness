@@ -1,6 +1,5 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { router } from 'expo-router';
+import { useState } from 'react';
 import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import {
@@ -28,7 +27,6 @@ import {
   useRoutineFolders,
   useRoutines,
 } from '@/features/workout/queries';
-import { autoSyncHevy } from '@/features/workout/hevySync';
 import { useStartWorkoutFlow } from '@/features/workout/useStartWorkoutFlow';
 import { useNow } from '@/lib/useNow';
 
@@ -45,15 +43,6 @@ export default function EntrenoScreen() {
   const routines = useRoutines();
   const folders = useRoutineFolders();
   const active = useActiveWorkout();
-  const client = useQueryClient();
-  // Con Hevy Pro (clave guardada), los entrenos nuevos de Hevy entran solos al abrir Entreno.
-  useFocusEffect(
-    useCallback(() => {
-      void autoSyncHevy().then((r) => {
-        if (r && r.inserted + r.updated > 0) void client.invalidateQueries();
-      });
-    }, [client]),
-  );
   const { startWorkout, starting } = useStartWorkoutFlow();
   const duplicate = useDuplicateRoutine();
   const remove = useDeleteRoutine();

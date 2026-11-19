@@ -2,7 +2,7 @@ This is an Expo/React Native mobile application. Prioritize mobile-first pattern
 
 ## Project-specific (Guillem Fitness)
 
-- iOS builds do NOT use EAS. Two free paths (README.md): A) `.github/workflows/ios-build.yml` builds an unsigned .ipa on GitHub Actions, installed with Sideloadly; B) on a Mac, `npx expo run:ios --device --configuration Release` with a free Apple ID (Personal Team). Both expire every 7 days.
+- iOS builds do NOT use EAS. Free paths (README.md): A) `.github/workflows/ios-build.yml` builds an unsigned .ipa on GitHub Actions (public repo) and publishes release builds to the `ultima` GitHub release; it is installed and auto-refreshed on the iPhone with SideStore (docs/GUIA-SIDESTORE-Y-HEVY.md), or with Sideloadly; B) on a Mac, `npx expo run:ios --device --configuration Release` with a free Apple ID (Personal Team). Free signing expires every 7 days unless SideStore refreshes it.
 - Plan and decisions: `docs/PLAN.md`. UI copy is Spanish, numbers in Spanish format (`src/domain/format.ts`).
 - Screens access data only through repositories (`src/data/repositories`). Every table has UUID id, createdAt, updatedAt, deletedAt.
 - Run `npm run check` (tsc + lint + jest) before declaring work done.

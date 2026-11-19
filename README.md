@@ -32,7 +32,7 @@ Todo se guarda en el móvil: sin cuentas, sin nube y sin anuncios.
   - **Historial** en lista, **calendario** y **estadísticas** (entrenos, volumen y duración por semana; series por músculo). Cada entreno se puede **editar** (series, nombre, nota, fecha, hora y duración), **repetir** o **guardar como rutina**.
   - **Entrenos de Hevy** (Perfil → Hevy, o el icono ⇄ en Entreno): se importan tal cual (series, kilos, reps, tipo de serie, RPE, notas, superseries y cardio con km y tiempo) y cuentan en Calorías, historial y récords.
     - **Gratis, con un archivo:** en Hevy, Perfil → Ajustes → Exportar e importar datos → Exportar entrenos → Guardar en Archivos; en la app, «Elegir archivo de Hevy». Antes de guardar enseña qué es nuevo, qué cambió y qué ejercicios se crearán. Se puede repetir cuando quieras: lo que ya estaba no se duplica, lo cambiado en Hevy se actualiza y lo borrado en la app no vuelve.
-    - **Automático, solo con Hevy Pro (de pago, ~2,99 $/mes):** pegando la clave de la API (hevy.com → Ajustes → Desarrollador) se sincroniza al abrir Entreno. La clave va al llavero del iPhone, nunca al código.
+    - **Automático, solo con Hevy Pro (de pago, ~2,99 $/mes):** pegando la clave de la API (hevy.com → Ajustes → Desarrollador) se sincroniza sola cada vez que abres la app. La clave va al llavero del iPhone, nunca al código.
     - Opción «Actualizar mis rutinas»: como en Hevy, cada rutina queda como tu último entreno con ella.
     - Los ejercicios que usas en Hevy tienen en la app su mismo nombre (también los nombres antiguos o en inglés de tu historial van al ejercicio correcto). Uno que la app no conozca se crea con su nombre de Hevy.
     - Kcal: la cinta y correr no suman como entreno (ya están en los pasos); bici, elíptica y remo sí (MET 7); el resto, como pesas.
@@ -57,7 +57,11 @@ Todo se guarda en el móvil: sin cuentas, sin nube y sin anuncios.
 
 ## Cómo instalarla en tu iPhone: elige opción
 
-Las dos opciones son gratis y usan tu Apple ID normal.
+> **Recomendado ahora: SideStore** (gratis). Se instala una vez con el PC y después el iPhone renueva la app solo cada día: **ya no caduca a los 7 días** ni necesitas Sideloadly. Las actualizaciones se instalan desde el propio iPhone (Perfil → Actualizar la app). Guía paso a paso, junto con lo de Hevy: [docs/GUIA-SIDESTORE-Y-HEVY.md](docs/GUIA-SIDESTORE-Y-HEVY.md).
+>
+> El repositorio es **público**: así GitHub compila gratis y sin cupo. No contiene ninguna clave.
+
+Las opciones de abajo también son gratis y usan tu Apple ID normal.
 
 | | **A · Desde Windows** | **B · Desde un Mac** |
 |---|---|---|

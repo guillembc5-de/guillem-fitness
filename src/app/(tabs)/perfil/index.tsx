@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 
 import { AppText, Card, ErrorState, ListRow, LoadingState, Screen, SectionHeader } from '@/design';
 import { formatDuration, formatNumber, formatWeight } from '@/domain/format';
+import { updateWithSideStore } from '@/features/profile/appUpdate';
 import { TargetSummary } from '@/features/profile/components';
 import { AI_PROVIDER_LABELS, GOAL_LABELS, SEX_LABELS } from '@/features/profile/labels';
 import { targetsForProfile, useApiKeyStatus, useProfile } from '@/features/profile/queries';
@@ -73,6 +74,13 @@ export default function PerfilScreen() {
           title="Copia de seguridad y datos de prueba"
           subtitle="Exportar o importar en JSON · generar o borrar 2 años de prueba"
           onPress={() => router.push('/perfil/datos-app')}
+          divider
+        />
+        <ListRow
+          icon="arrow-up-circle-outline"
+          title="Actualizar la app"
+          subtitle="Instala la última versión con SideStore, sin perder datos (con LocalDevVPN conectada)"
+          onPress={() => void updateWithSideStore()}
         />
       </Card>
 
