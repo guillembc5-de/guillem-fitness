@@ -1,5 +1,6 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import {
@@ -27,6 +28,7 @@ import {
   useRoutineFolders,
   useRoutines,
 } from '@/features/workout/queries';
+import { autoSyncHevy } from '@/features/workout/hevySync';
 import { useStartWorkoutFlow } from '@/features/workout/useStartWorkoutFlow';
 import { useNow } from '@/lib/useNow';
 
@@ -43,6 +45,15 @@ export default function EntrenoScreen() {
   const routines = useRoutines();
   const folders = useRoutineFolders();
   const active = useActiveWorkout();
+  const client = useQueryClient();
+  // Con Hevy Pro (clave guardada), los entrenos nuevos de Hevy entran solos al abrir Entreno.
+  useFocusEffect(
+    useCallback(() => {
+      void autoSyncHevy().then((r) => {
+        if (r && r.inserted + r.updated > 0) void client.invalidateQueries();
+      });
+    }, [client]),
+  );
   const { startWorkout, starting } = useStartWorkoutFlow();
   const duplicate = useDuplicateRoutine();
   const remove = useDeleteRoutine();
@@ -172,9 +183,19 @@ export default function EntrenoScreen() {
     <Screen
       title="Entreno"
       headerRight={
-        <Pressable accessibilityRole="button" accessibilityLabel="Historial y estadísticas" onPress={() => router.push('/entreno/historial')} style={styles.iconButton}>
-          <Icon name="stats-chart-outline" size={26} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Traer entrenos de Hevy"
+            onPress={() => router.push('/perfil/hevy')}
+            style={styles.iconButton}
+          >
+            <Icon name="swap-horizontal-outline" size={26} />
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Historial y estadísticas" onPress={() => router.push('/entreno/historial')} style={styles.iconButton}>
+            <Icon name="stats-chart-outline" size={26} />
+          </Pressable>
+        </View>
       }
     >
       {active.data ? (
@@ -276,6 +297,7 @@ export default function EntrenoScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerActions: { flexDirection: 'row' },
   row: { flexDirection: 'row', gap: spacing.sm },
   flex: { flex: 1 },
   iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

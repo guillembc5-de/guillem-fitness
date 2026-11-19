@@ -36,3 +36,16 @@ export async function deleteApiKey(provider: AiProvider): Promise<void> {
 export function maskKey(key: string): string {
   return `••••${key.slice(-4)}`;
 }
+
+/** Clave de la API de Hevy (solo existe con Hevy Pro). */
+const HEVY_KEY = 'gf.apiKey.hevy';
+
+export async function getHevyKey(): Promise<string | null> {
+  return SecureStore.getItemAsync(HEVY_KEY, OPTIONS);
+}
+
+export async function setHevyKey(key: string): Promise<void> {
+  const trimmed = key.trim();
+  if (trimmed === '') await SecureStore.deleteItemAsync(HEVY_KEY, OPTIONS);
+  else await SecureStore.setItemAsync(HEVY_KEY, trimmed, OPTIONS);
+}

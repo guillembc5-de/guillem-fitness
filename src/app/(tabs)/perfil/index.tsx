@@ -45,6 +45,13 @@ export default function PerfilScreen() {
           onPress={() => router.push('/perfil/entreno')}
           divider
         />
+        <ListRow
+          icon="swap-horizontal-outline"
+          title="Hevy"
+          subtitle="Traer tus entrenos de Hevy, tal cual"
+          onPress={() => router.push('/perfil/hevy')}
+          divider
+        />
         <ListRow icon="heart-outline" title="Salud con Atajos" subtitle="Traer tus pasos de la app Salud" onPress={() => router.push('/perfil/salud')} />
       </Card>
 

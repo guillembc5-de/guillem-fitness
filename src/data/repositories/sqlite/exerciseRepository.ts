@@ -36,6 +36,7 @@ export class SqliteExerciseRepository implements ExerciseRepository {
       defaultRestSeconds: input.defaultRestSeconds,
       isCustom: true,
       notes: input.notes,
+      cardioKind: input.cardioKind ?? null,
     };
     this.db.insert(exercise).values(row).run();
     return toExercise(row);
@@ -87,6 +88,7 @@ export class SqliteExerciseRepository implements ExerciseRepository {
         weightKg: workoutSet.weightKg,
         reps: workoutSet.reps,
         durationS: workoutSet.durationS,
+        distanceM: workoutSet.distanceM,
         completedAt: workoutSet.completedAt,
         position: workoutSet.position,
       })

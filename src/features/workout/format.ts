@@ -5,12 +5,19 @@ import type { TrackingType } from '@/domain/enums';
 import { formatDuration, formatNumber, toDisplayWeight } from '@/domain/format';
 import type { WeightUnit } from '@/domain/types';
 
-/** "60 × 7", "+10 × 10", "12 reps", "0:45". */
+/** "60 × 7", "+10 × 10", "12 reps", "0:45", "3,16 km · 20:00". */
 export function formatSetShort(
   tracking: TrackingType,
-  set: { weightKg: number | null; reps: number | null; durationS: number | null },
+  set: { weightKg: number | null; reps: number | null; durationS: number | null; distanceM?: number | null },
   unit: WeightUnit,
 ): string {
+  if (tracking === 'distance_duration') {
+    const parts = [
+      set.distanceM !== null && set.distanceM !== undefined && set.distanceM > 0 ? `${formatNumber(set.distanceM / 1000, { maxDecimals: 2 })} km` : null,
+      set.durationS !== null ? formatDuration(set.durationS) : null,
+    ].filter((p): p is string => p !== null);
+    return parts.length > 0 ? parts.join(' · ') : '–';
+  }
   if (tracking === 'duration') return set.durationS !== null ? formatDuration(set.durationS) : '–';
   if (tracking === 'reps_only') return set.reps !== null ? `${set.reps} reps` : '–';
   const w = set.weightKg !== null ? formatNumber(toDisplayWeight(set.weightKg, unit), { maxDecimals: 2 }) : '–';

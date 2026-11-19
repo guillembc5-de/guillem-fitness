@@ -12,6 +12,9 @@ import type {
   Exercise,
   ExerciseHistorySet,
   ExerciseInput,
+  ExternalState,
+  ImportCounts,
+  ImportedWorkout,
   MuscleSetCount,
   RoutineDetail,
   RoutineDraft,
@@ -80,6 +83,13 @@ export type StartWorkoutParams = {
 };
 
 export interface WorkoutRepository {
+  /** Entrenos importados cuyo id empieza por `prefix` (por ejemplo, «hevy:»). */
+  externalStates(prefix: string): Promise<Map<string, ExternalState>>;
+  /**
+   * Guarda entrenos de otra app como entrenos terminados. Si ya estaban, solo
+   * se reescriben si cambiaron; los que borraste en la app no vuelven.
+   */
+  importExternal(list: readonly ImportedWorkout[]): Promise<ImportCounts>;
   /** Entreno en curso (sin terminar), si lo hay. */
   getActive(): Promise<WorkoutDetail | null>;
   get(id: string): Promise<WorkoutDetail | null>;

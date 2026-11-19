@@ -77,6 +77,7 @@ export class SqliteRoutineRepository implements RoutineRepository {
             targetWeightKg: s.targetWeightKg,
             targetReps: s.targetReps,
             targetDurationS: s.targetDurationS,
+            targetDistanceM: s.targetDistanceM,
           })),
       })),
     };
@@ -114,7 +115,13 @@ export class SqliteRoutineRepository implements RoutineRepository {
             restSeconds: e.restSeconds,
             notes: e.notes,
             supersetId: e.supersetId,
-            sets: e.sets.map(({ setType, targetWeightKg, targetReps, targetDurationS }) => ({ setType, targetWeightKg, targetReps, targetDurationS })),
+            sets: e.sets.map(({ setType, targetWeightKg, targetReps, targetDurationS, targetDistanceM }) => ({
+              setType,
+              targetWeightKg,
+              targetReps,
+              targetDurationS,
+              targetDistanceM,
+            })),
           })),
         ),
       },
@@ -213,7 +220,13 @@ export class SqliteRoutineRepository implements RoutineRepository {
           supersetId: e.supersetId,
           sets: sets
             .filter((s) => s.workoutExerciseId === e.id)
-            .map((s) => ({ setType: s.setType, targetWeightKg: s.weightKg, targetReps: s.reps, targetDurationS: s.durationS })),
+            .map((s) => ({
+              setType: s.setType,
+              targetWeightKg: s.weightKg,
+              targetReps: s.reps,
+              targetDurationS: s.durationS,
+              targetDistanceM: s.distanceM,
+            })),
         })),
       ),
     };

@@ -1,11 +1,21 @@
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, max, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, like, lt, max, ne, sql } from 'drizzle-orm';
 
 import type { Db } from '@/data/db/client';
 import { exercise, workout, workoutExercise, workoutSet } from '@/data/db/schema';
 import type { MuscleGroup, SetType } from '@/domain/enums';
 import { toLocalDate } from '@/domain/localDay';
 import { computeBests, matchPreviousSets, type ExerciseBests } from '@/domain/workout';
-import type { MuscleSetCount, SetPatch, WorkoutDetail, WorkoutDetailsPatch, WorkoutSet, WorkoutSummary } from '@/domain/workoutTypes';
+import type {
+  ExternalState,
+  ImportCounts,
+  ImportedWorkout,
+  MuscleSetCount,
+  SetPatch,
+  WorkoutDetail,
+  WorkoutDetailsPatch,
+  WorkoutSet,
+  WorkoutSummary,
+} from '@/domain/workoutTypes';
 import { newId, now } from '@/lib/ids';
 
 import type { StartWorkoutParams, WorkoutRepository } from '../interfaces';
@@ -24,7 +34,7 @@ type PlannedExercise = {
   rest: number;
   notes: string | null;
   supersetId: string | null;
-  sets: { setType: SetType; weightKg: number | null; reps: number | null; durationS: number | null }[];
+  sets: { setType: SetType; weightKg: number | null; reps: number | null; durationS: number | null; distanceM: number | null }[];
 };
 
 export class SqliteWorkoutRepository implements WorkoutRepository {
@@ -48,6 +58,92 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
     return this.detail(id);
   }
 
+  async externalStates(prefix: string): Promise<Map<string, ExternalState>> {
+    const rows = this.db
+      .select({ id: workout.id, externalId: workout.externalId, signature: workout.externalSignature, deletedAt: workout.deletedAt })
+      .from(workout)
+      .where(like(workout.externalId, `${prefix.replace(/[%_]/g, '')}%`))
+      .all();
+    const map = new Map<string, ExternalState>();
+    for (const r of rows) if (r.externalId) map.set(r.externalId, { id: r.id, signature: r.signature, deleted: r.deletedAt !== null });
+    return map;
+  }
+
+  async importExternal(list: readonly ImportedWorkout[]): Promise<ImportCounts> {
+    const counts: ImportCounts = { inserted: 0, updated: 0, skipped: 0 };
+    const timestamp = now();
+    this.db.transaction((tx) => {
+      for (const w of list) {
+        const existing = tx
+          .select({ id: workout.id, deletedAt: workout.deletedAt, signature: workout.externalSignature })
+          .from(workout)
+          .where(eq(workout.externalId, w.externalId))
+          .get();
+        // Borrado en la app: se respeta. Sin cambios: no se toca.
+        if (existing && (existing.deletedAt !== null || existing.signature === w.signature)) {
+          counts.skipped += 1;
+          continue;
+        }
+        const fields = {
+          routineId: w.routineId,
+          name: w.name,
+          startedAt: w.startedAt,
+          endedAt: w.endedAt,
+          localDate: toLocalDate(w.startedAt),
+          notes: w.notes,
+          externalId: w.externalId,
+          externalSignature: w.signature,
+        };
+        let workoutId: string;
+        if (existing) {
+          workoutId = existing.id;
+          tx.update(workout).set({ ...fields, updatedAt: timestamp }).where(eq(workout.id, workoutId)).run();
+          const oldIds = tx
+            .select({ id: workoutExercise.id })
+            .from(workoutExercise)
+            .where(and(eq(workoutExercise.workoutId, workoutId), isNull(workoutExercise.deletedAt)))
+            .all()
+            .map((r) => r.id);
+          if (oldIds.length > 0) {
+            tx.update(workoutSet)
+              .set({ deletedAt: timestamp, updatedAt: timestamp })
+              .where(and(inArray(workoutSet.workoutExerciseId, oldIds), isNull(workoutSet.deletedAt)))
+              .run();
+            tx.update(workoutExercise).set({ deletedAt: timestamp, updatedAt: timestamp }).where(inArray(workoutExercise.id, oldIds)).run();
+          }
+          counts.updated += 1;
+        } else {
+          workoutId = newId();
+          tx.insert(workout)
+            .values({ ...newMeta(workoutId, timestamp), isDemo: false, restEndsAt: null, restNotificationId: null, ...fields })
+            .run();
+          counts.inserted += 1;
+        }
+        w.exercises.forEach((e, ei) => {
+          const weId = newId();
+          tx.insert(workoutExercise)
+            .values({
+              ...newMeta(weId, timestamp),
+              workoutId,
+              exerciseId: e.exerciseId,
+              exerciseNameSnapshot: e.nameSnapshot,
+              position: ei,
+              restSeconds: e.restSeconds,
+              notes: e.notes,
+              supersetId: e.supersetId,
+            })
+            .run();
+          e.sets.forEach((s, si) => {
+            tx.insert(workoutSet)
+              .values({ ...newMeta(newId(), timestamp), workoutExerciseId: weId, position: si, ...s, completedAt: w.endedAt })
+              .run();
+          });
+        });
+      }
+    });
+    return counts;
+  }
+
   async list(): Promise<WorkoutSummary[]> {
     const rows = this.db
       .select({
@@ -55,9 +151,13 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
         exerciseCount: sql<number>`count(distinct ${workoutExercise.id})`,
         setCount: sql<number>`count(${workoutSet.id})`,
         volume: sql<number>`coalesce(sum(case when ${workoutSet.setType} != 'warmup' and ${workoutSet.reps} >= 1 then coalesce(${workoutSet.weightKg}, 0) * ${workoutSet.reps} else 0 end), 0)`,
+        // Minutos de cardio: los que ya cuentan los pasos y los que no (para las kcal).
+        cardioStepsS: sql<number>`coalesce(sum(case when ${exercise.cardioKind} = 'steps' then coalesce(${workoutSet.durationS}, 0) else 0 end), 0)`,
+        cardioMachineS: sql<number>`coalesce(sum(case when ${exercise.cardioKind} = 'machine' then coalesce(${workoutSet.durationS}, 0) else 0 end), 0)`,
       })
       .from(workout)
       .leftJoin(workoutExercise, and(eq(workoutExercise.workoutId, workout.id), isNull(workoutExercise.deletedAt)))
+      .leftJoin(exercise, eq(exercise.id, workoutExercise.exerciseId))
       .leftJoin(
         workoutSet,
         and(eq(workoutSet.workoutExerciseId, workoutExercise.id), isNull(workoutSet.deletedAt), isNotNull(workoutSet.completedAt)),
@@ -66,7 +166,14 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
       .groupBy(workout.id)
       .orderBy(desc(workout.startedAt))
       .all();
-    return rows.map((r) => ({ ...toWorkout(r.w), exerciseCount: r.exerciseCount, setCount: r.setCount, volume: r.volume }));
+    return rows.map((r) => ({
+      ...toWorkout(r.w),
+      exerciseCount: r.exerciseCount,
+      setCount: r.setCount,
+      volume: r.volume,
+      cardioStepsS: r.cardioStepsS,
+      cardioMachineS: r.cardioMachineS,
+    }));
   }
 
   async start({ routineId, name, defaultRestSeconds, previousFrom = 'any' }: StartWorkoutParams): Promise<string> {
@@ -88,6 +195,7 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
             weightKg: prev?.weightKg ?? s.targetWeightKg,
             reps: prev?.reps ?? s.targetReps,
             durationS: prev?.durationS ?? s.targetDurationS,
+            distanceM: prev?.distanceM ?? s.targetDistanceM,
           };
         }),
       };
@@ -111,7 +219,7 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
         rest: e.restSeconds,
         notes: e.notes,
         supersetId,
-        sets: e.sets.map((s) => ({ setType: s.setType, weightKg: s.weightKg, reps: s.reps, durationS: s.durationS })),
+        sets: e.sets.map((s) => ({ setType: s.setType, weightKg: s.weightKg, reps: s.reps, durationS: s.durationS, distanceM: s.distanceM })),
       };
     });
     return this.createWorkout(source.routineId, source.name, plan);
@@ -151,6 +259,7 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
           weightKg: previous?.weightKg ?? null,
           reps: previous?.reps ?? null,
           durationS: previous?.durationS ?? null,
+          distanceM: previous?.distanceM ?? null,
           rpe: null,
           completedAt: null,
         })
@@ -220,7 +329,14 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
         if (s.completedAt !== null) return;
         const prev = matched[i];
         tx.update(workoutSet)
-          .set({ weightKg: prev?.weightKg ?? null, reps: prev?.reps ?? null, durationS: prev?.durationS ?? null, rpe: null, updatedAt: timestamp })
+          .set({
+            weightKg: prev?.weightKg ?? null,
+            reps: prev?.reps ?? null,
+            durationS: prev?.durationS ?? null,
+            distanceM: prev?.distanceM ?? null,
+            rpe: null,
+            updatedAt: timestamp,
+          })
           .where(eq(workoutSet.id, s.id))
           .run();
       });
@@ -285,6 +401,7 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
         weightKg: last?.weightKg ?? null,
         reps: last?.reps ?? null,
         durationS: last?.durationS ?? null,
+        distanceM: last?.distanceM ?? null,
         rpe: null,
         completedAt: null,
       })
@@ -315,6 +432,7 @@ export class SqliteWorkoutRepository implements WorkoutRepository {
             weightKg: s.weightKg,
             reps: s.reps,
             durationS: null,
+            distanceM: null,
             rpe: null,
             completedAt: null,
           })

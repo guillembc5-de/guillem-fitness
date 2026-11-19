@@ -22,6 +22,13 @@
       "when": 1793968061297,
       "tag": "0002_fitness",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1795074795728,
+      "tag": "0003_hevy",
+      "breakpoints": true
     }
   ]
 }

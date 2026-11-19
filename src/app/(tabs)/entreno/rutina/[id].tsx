@@ -91,7 +91,7 @@ export default function RoutineDetailScreen() {
                     {setLabel(s.setType, numbers[si] ?? 0)}
                   </AppText>
                   <AppText variant="number">
-                    {formatSetShort(e.exercise.trackingType, { weightKg: s.targetWeightKg, reps: s.targetReps, durationS: s.targetDurationS }, unit)}
+                    {formatSetShort(e.exercise.trackingType, { weightKg: s.targetWeightKg, reps: s.targetReps, durationS: s.targetDurationS, distanceM: s.targetDistanceM }, unit)}
                   </AppText>
                 </View>
               );

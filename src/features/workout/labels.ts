@@ -38,6 +38,7 @@ export const TRACKING_LABELS: Record<TrackingType, string> = {
   added_weight_reps: 'Lastre y reps',
   reps_only: 'Solo reps',
   duration: 'Tiempo',
+  distance_duration: 'Distancia y tiempo',
 };
 
 export const SET_TYPE_LABELS: Record<SetType, string> = {

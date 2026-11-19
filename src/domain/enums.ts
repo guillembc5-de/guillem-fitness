@@ -41,8 +41,9 @@ export type Equipment = (typeof EQUIPMENT)[number];
  * - added_weight_reps: lastre (+kg) × reps, como la hiperextensión con peso
  * - reps_only: solo repeticiones
  * - duration: segundos (plancha)
+ * - distance_duration: km y tiempo (cinta, bici, correr), como el cardio de Hevy
  */
-export const TRACKING_TYPES = ['weight_reps', 'added_weight_reps', 'reps_only', 'duration'] as const;
+export const TRACKING_TYPES = ['weight_reps', 'added_weight_reps', 'reps_only', 'duration', 'distance_duration'] as const;
 export type TrackingType = (typeof TRACKING_TYPES)[number];
 
 export const SET_TYPES = ['normal', 'warmup', 'dropset', 'failure'] as const;
@@ -59,3 +60,11 @@ export type MealSource = (typeof MEAL_SOURCES)[number];
 
 export const PENDING_STATUSES = ['pending', 'failed'] as const;
 export type PendingStatus = (typeof PENDING_STATUSES)[number];
+
+/**
+ * Cardio que ya cuentan los pasos (cinta, correr, caminar: el móvil o el reloj
+ * cuentan esos pasos) o que no (bici, elíptica, remo). Sirve para no sumar dos
+ * veces las kcal de un mismo esfuerzo.
+ */
+export const CARDIO_KINDS = ['steps', 'machine'] as const;
+export type CardioKind = (typeof CARDIO_KINDS)[number];

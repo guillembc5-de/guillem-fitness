@@ -15,6 +15,7 @@ Todo se guarda en el móvil: sin cuentas, sin nube y sin anuncios.
 | 8 | Menú «⋮» del ejercicio como Hevy, lower 2, upper 2, RECUPERACIÓ CREUATS, icono de Goku, Atajo en catalán | ✅ (sin probar en el iPhone) |
 | 9 | Datos de Fitness: energía activa, minutos de ejercicio y entrenos del Watch | ✅ (sin probar en el iPhone) |
 | 10 | Galería de platos: fotos de comida guardadas para repetirlas y afinar las estimaciones | ✅ (sin probar en el iPhone) |
+| 11 | Entrenos de Hevy en la app (archivo gratis o API Pro), nombres de ejercicio de Hevy, cardio con km y tiempo | ✅ (sin probar en el iPhone) |
 
 **Pendiente de comprobar en el iPhone real** (no se puede probar sin Mac ni móvil): la primera compilación (en GitHub o en el Mac), HealthKit con Apple ID gratuito, las notificaciones con la app cerrada y la llamada real a Gemini o Claude. Si algo falla, el error de GitHub Actions o una captura bastan para arreglarlo.
 
@@ -29,6 +30,12 @@ Todo se guarda en el móvil: sin cuentas, sin nube y sin anuncios.
   - Descanso automático con aviso aunque la app esté cerrada. Si cierras la app a la fuerza, vuelves al mismo punto.
   - Al terminar, si cambiaste la rutina, pregunta si **actualizarla**. Resumen con nº de entreno, racha semanal y récords.
   - **Historial** en lista, **calendario** y **estadísticas** (entrenos, volumen y duración por semana; series por músculo). Cada entreno se puede **editar** (series, nombre, nota, fecha, hora y duración), **repetir** o **guardar como rutina**.
+  - **Entrenos de Hevy** (Perfil → Hevy, o el icono ⇄ en Entreno): se importan tal cual (series, kilos, reps, tipo de serie, RPE, notas, superseries y cardio con km y tiempo) y cuentan en Calorías, historial y récords.
+    - **Gratis, con un archivo:** en Hevy, Perfil → Ajustes → Exportar e importar datos → Exportar entrenos → Guardar en Archivos; en la app, «Elegir archivo de Hevy». Antes de guardar enseña qué es nuevo, qué cambió y qué ejercicios se crearán. Se puede repetir cuando quieras: lo que ya estaba no se duplica, lo cambiado en Hevy se actualiza y lo borrado en la app no vuelve.
+    - **Automático, solo con Hevy Pro (de pago, ~2,99 $/mes):** pegando la clave de la API (hevy.com → Ajustes → Desarrollador) se sincroniza al abrir Entreno. La clave va al llavero del iPhone, nunca al código.
+    - Opción «Actualizar mis rutinas»: como en Hevy, cada rutina queda como tu último entreno con ella.
+    - Los ejercicios que usas en Hevy tienen en la app su mismo nombre (también los nombres antiguos o en inglés de tu historial van al ejercicio correcto). Uno que la app no conozca se crea con su nombre de Hevy.
+    - Kcal: la cinta y correr no suman como entreno (ya están en los pasos); bici, elíptica y remo sí (MET 7); el resto, como pesas.
   - Ajustes en Perfil → Entreno: RPE, discos y barra, «Anterior», avisos de récord y pantalla encendida.
   - No incluye lo que necesita servidores o contenido de Hevy: vídeos de ejercicios, programas para descargar, parte social ni fotos en los entrenos.
 - **Pasos:** anillo del día, km, kcal y racha; semana, mes y calendario por colores; una sola fuente (Salud o, si no hay permiso, el sensor del iPhone). Si la instalación no puede leer Salud, un **Atajo** te trae los pasos de Salud y del Apple Watch (Perfil → Salud con Atajos).

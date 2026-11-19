@@ -1,4 +1,4 @@
-import { count, eq, isNull, max } from 'drizzle-orm';
+import { and, eq, isNull, max } from 'drizzle-orm';
 
 import type { Db } from '@/data/db/client';
 import { exercise, routine, routineExercise, routineSet } from '@/data/db/schema';
@@ -10,8 +10,9 @@ import { SEED_ROUTINES } from './routines';
 
 /**
  * Carga la biblioteca de ejercicios y las rutinas de partida.
- * - Ejercicios: se insertan los que falten (id fijos, sin duplicar). Una
- *   consulta de recuento por arranque; solo escribe si hay novedades.
+ * - Ejercicios: se insertan los que falten (id fijos, sin duplicar) y los de
+ *   la biblioteca toman el nombre y el tipo de la versión actual (por ejemplo,
+ *   los nombres de Hevy). Solo escribe si hay novedades.
  * - Rutinas: se insertan las que aún no existan por su id. Las borradas
  *   siguen en la tabla (marcadas), así que no vuelven. Si ya tienes
  *   rutinas, las nuevas van al final de la lista.
@@ -19,10 +20,22 @@ import { SEED_ROUTINES } from './routines';
 export function seedDatabase(db: Db): void {
   const timestamp = now();
 
-  const libraryCount = db.select({ n: count() }).from(exercise).where(eq(exercise.isCustom, false)).get()?.n ?? 0;
-  if (libraryCount < SEED_EXERCISES.length) {
+  const library = new Map(
+    db
+      .select({ id: exercise.id, name: exercise.name, trackingType: exercise.trackingType, cardioKind: exercise.cardioKind })
+      .from(exercise)
+      .where(eq(exercise.isCustom, false))
+      .all()
+      .map((r) => [r.id, r] as const),
+  );
+  const newExercises = SEED_EXERCISES.filter((e) => !library.has(e.id));
+  const changed = SEED_EXERCISES.filter((e) => {
+    const row = library.get(e.id);
+    return row !== undefined && (row.name !== e.name || row.trackingType !== e.trackingType || row.cardioKind !== (e.cardioKind ?? null));
+  });
+  if (newExercises.length > 0 || changed.length > 0) {
     db.transaction((tx) => {
-      for (const e of SEED_EXERCISES) {
+      for (const e of newExercises) {
         tx.insert(exercise)
           .values({
             id: e.id,
@@ -38,8 +51,15 @@ export function seedDatabase(db: Db): void {
             defaultRestSeconds: null,
             isCustom: false,
             notes: null,
+            cardioKind: e.cardioKind ?? null,
           })
           .onConflictDoNothing()
+          .run();
+      }
+      for (const e of changed) {
+        tx.update(exercise)
+          .set({ name: e.name, searchName: normalizeSearch(e.name), trackingType: e.trackingType, cardioKind: e.cardioKind ?? null, updatedAt: timestamp })
+          .where(and(eq(exercise.id, e.id), eq(exercise.isCustom, false)))
           .run();
       }
     });

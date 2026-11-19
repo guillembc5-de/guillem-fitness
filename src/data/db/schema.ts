@@ -1,6 +1,7 @@
 import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 import type {
+  CardioKind,
   Equipment,
   MealSource,
   MealType,
@@ -62,6 +63,8 @@ export const exercise = sqliteTable(
     defaultRestSeconds: integer('default_rest_seconds'),
     isCustom: integer('is_custom', { mode: 'boolean' }).notNull().default(false),
     notes: text('notes'),
+    /** Solo cardio: si sus kcal ya las cuentan los pasos (steps) o no (machine). */
+    cardioKind: text('cardio_kind').$type<CardioKind>(),
   },
   (t) => [index('exercise_search_idx').on(t.searchName), index('exercise_muscle_idx').on(t.muscleGroup)],
 );
@@ -114,6 +117,7 @@ export const routineSet = sqliteTable(
     targetWeightKg: real('target_weight_kg'),
     targetReps: integer('target_reps'),
     targetDurationS: integer('target_duration_s'),
+    targetDistanceM: real('target_distance_m'),
   },
   (t) => [index('routine_set_re_idx').on(t.routineExerciseId)],
 );
@@ -133,8 +137,16 @@ export const workout = sqliteTable(
     restEndsAt: integer('rest_ends_at'),
     restNotificationId: text('rest_notification_id'),
     notes: text('notes'),
+    /** Entreno importado (por ejemplo, «hevy:…»): evita duplicarlo al volver a importar. */
+    externalId: text('external_id'),
+    /** Huella de su contenido al importarlo: si no cambia, no se reescribe. */
+    externalSignature: text('external_signature'),
   },
-  (t) => [index('workout_started_idx').on(t.startedAt), index('workout_ended_idx').on(t.endedAt)],
+  (t) => [
+    index('workout_started_idx').on(t.startedAt),
+    index('workout_ended_idx').on(t.endedAt),
+    index('workout_external_idx').on(t.externalId),
+  ],
 );
 
 export const workoutExercise = sqliteTable(
@@ -170,6 +182,8 @@ export const workoutSet = sqliteTable(
     weightKg: real('weight_kg'),
     reps: integer('reps'),
     durationS: integer('duration_s'),
+    /** Distancia en metros (cardio). */
+    distanceM: real('distance_m'),
     /** Esfuerzo percibido (6–10), opcional. */
     rpe: real('rpe'),
     /** null = serie sin completar. */

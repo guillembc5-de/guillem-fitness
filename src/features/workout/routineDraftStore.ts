@@ -12,7 +12,8 @@ import { newId } from '@/lib/ids';
  * selector de ejercicios (otra pantalla) pueda añadir o sustituir ejercicios.
  */
 
-export type DraftSet = { key: string; setType: SetType; weight: string; reps: string; duration: string };
+/** En cardio (distancia y tiempo) «distance» va en km y «duration» en minutos. */
+export type DraftSet = { key: string; setType: SetType; weight: string; reps: string; duration: string; distance: string };
 
 export type DraftExercise = {
   key: string;
@@ -53,7 +54,7 @@ let counter = 0;
 const key = () => `k${++counter}`;
 
 function emptySet(): DraftSet {
-  return { key: key(), setType: 'normal', weight: '', reps: '', duration: '' };
+  return { key: key(), setType: 'normal', weight: '', reps: '', duration: '', distance: '' };
 }
 
 /** Si una superserie se queda con un solo ejercicio, deja de serlo. */
@@ -88,7 +89,13 @@ export const useRoutineDraft = create<State>((set) => ({
           setType: s.setType,
           weight: s.targetWeightKg !== null ? toInputText(toDisplayWeight(s.targetWeightKg, unit), 2) : '',
           reps: s.targetReps !== null ? String(s.targetReps) : '',
-          duration: s.targetDurationS !== null ? String(s.targetDurationS) : '',
+          duration:
+            s.targetDurationS === null
+              ? ''
+              : e.exercise.trackingType === 'distance_duration'
+                ? toInputText(s.targetDurationS / 60, 1)
+                : String(s.targetDurationS),
+          distance: s.targetDistanceM !== null ? toInputText(s.targetDistanceM / 1000, 2) : '',
         })),
       })),
     }),
@@ -123,7 +130,7 @@ export const useRoutineDraft = create<State>((set) => ({
               name: e.name,
               trackingType: e.trackingType,
               // Otro tipo de registro (p. ej. de peso a tiempo): los objetivos ya no sirven.
-              sets: x.trackingType === e.trackingType ? x.sets : x.sets.map((s) => ({ ...s, weight: '', reps: '', duration: '' })),
+              sets: x.trackingType === e.trackingType ? x.sets : x.sets.map((s) => ({ ...s, weight: '', reps: '', duration: '', distance: '' })),
             }
           : x,
       ),
@@ -211,11 +218,14 @@ export function toRoutineDraft(name: string, exercises: readonly DraftExercise[]
         const reps = parseDecimal(s.reps);
         const duration = parseDecimal(s.duration);
         const weight = parseDecimal(s.weight);
+        const distance = parseDecimal(s.distance);
+        const cardio = e.trackingType === 'distance_duration';
         return {
           setType: s.setType,
           targetWeightKg: weight !== null ? fromDisplayWeight(weight, unit) : null,
           targetReps: reps !== null ? Math.round(reps) : null,
-          targetDurationS: duration !== null ? Math.round(duration) : null,
+          targetDurationS: duration !== null ? Math.round(cardio ? duration * 60 : duration) : null,
+          targetDistanceM: cardio && distance !== null ? Math.round(distance * 1000) : null,
         };
       }),
     })),

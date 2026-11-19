@@ -132,6 +132,22 @@ describe('kcal de los entrenos', () => {
       ),
     ).toBe(240);
   });
+
+  it('cinta y correr no suman: sus kcal ya están en los pasos', () => {
+    // Tu «cintaa» del 15/11: 71 min, todo cinta → 0 kcal de entreno.
+    expect(workoutsKcal([{ startedAt: 0, endedAt: 71 * 60_000, cardioStepsS: 4256, cardioMachineS: 0 }], 80)).toBe(0);
+    // Upper de 80 min con 20 de cinta: solo cuentan los 60 min de pesas.
+    expect(workoutsKcal([{ startedAt: 0, endedAt: 80 * 60_000, cardioStepsS: 1200, cardioMachineS: 0 }], 80)).toBe(240);
+  });
+
+  it('la bici suma como cardio: (MET 7 − 1) × kg × horas', () => {
+    // 75 min: 60 de pesas (240) + 15 de bici (6 × 80 × 0,25 = 120).
+    expect(workoutsKcal([{ startedAt: 0, endedAt: 75 * 60_000, cardioStepsS: 0, cardioMachineS: 900 }], 80)).toBe(360);
+  });
+
+  it('un cardio mal apuntado (más largo que el entreno) no resta de más', () => {
+    expect(workoutsKcal([{ startedAt: 0, endedAt: 30 * 60_000, cardioStepsS: 0, cardioMachineS: 3600 }], 80)).toBe(Math.round(6 * 80 * 0.5));
+  });
 });
 
 describe('racha semanal, totales y cambios de rutina', () => {

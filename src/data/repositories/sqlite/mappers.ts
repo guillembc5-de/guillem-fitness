@@ -28,6 +28,7 @@ export function toExercise(row: typeof exercise.$inferSelect): Exercise {
     defaultRestSeconds: row.defaultRestSeconds,
     isCustom: row.isCustom,
     notes: row.notes,
+    cardioKind: row.cardioKind,
   };
 }
 
@@ -59,6 +60,7 @@ export function toWorkout(row: typeof workout.$inferSelect): Workout {
     restNotificationId: row.restNotificationId,
     notes: row.notes,
     isDemo: row.isDemo,
+    externalId: row.externalId,
   };
 }
 
@@ -74,6 +76,7 @@ export function toWorkoutSet(row: typeof workoutSet.$inferSelect): WorkoutSet {
     weightKg: row.weightKg,
     reps: row.reps,
     durationS: row.durationS,
+    distanceM: row.distanceM,
     rpe: row.rpe,
     completedAt: row.completedAt,
   };

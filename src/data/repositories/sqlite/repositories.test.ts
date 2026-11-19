@@ -54,7 +54,7 @@ describe('carga inicial', () => {
     expect(await exercises.list()).toHaveLength(SEED_EXERCISES.length);
     const list = await routines.list();
     expect(list.map((r) => r.name)).toEqual(['lower 1', 'upper 1', 'lower 2', 'upper 2', 'RECUPERACIÓ CREUATS']);
-    expect(list[1]?.exerciseNames[0]).toBe('Press de pecho inclinado (máquina)');
+    expect(list[1]?.exerciseNames[0]).toBe('Press de Pecho Inclinado (Máquina)');
   });
 
   it('es idempotente y no resucita rutinas borradas', async () => {
@@ -97,7 +97,7 @@ describe('entreno desde rutina', () => {
     const w = await workouts.getActive();
     expect(w?.id).toBe(id);
     expect(w?.exercises).toHaveLength(8);
-    const rdl = w?.exercises.find((e) => e.exerciseNameSnapshot === 'Peso muerto rumano (barra)');
+    const rdl = w?.exercises.find((e) => e.exerciseNameSnapshot === 'Peso Muerto Rumano (Barra)');
     expect(rdl?.restSeconds).toBe(180);
     expect(rdl?.sets.map((s) => [s.weightKg, s.reps])).toEqual([
       [90, 10],
@@ -128,7 +128,7 @@ describe('entreno desde rutina', () => {
   it('al terminar se descartan series y ejercicios sin completar', async () => {
     const id = await workouts.start({ routineId: await lowerRoutineId(), name: 'lower 1', defaultRestSeconds: 150 });
     const w = await workouts.get(id);
-    const rdl = w?.exercises.find((e) => e.exerciseNameSnapshot === 'Peso muerto rumano (barra)');
+    const rdl = w?.exercises.find((e) => e.exerciseNameSnapshot === 'Peso Muerto Rumano (Barra)');
     for (const s of rdl?.sets.slice(0, 2) ?? []) await workouts.completeSet(s.id, { weightKg: s.weightKg, reps: s.reps, durationS: null });
     await workouts.finish(id);
 
@@ -145,7 +145,7 @@ describe('entreno desde rutina', () => {
     const routineId = await lowerRoutineId();
     const first = await workouts.start({ routineId, name: 'lower 1', defaultRestSeconds: 150 });
     const w1 = await workouts.get(first);
-    const rdl1 = w1?.exercises.find((e) => e.exerciseNameSnapshot === 'Peso muerto rumano (barra)');
+    const rdl1 = w1?.exercises.find((e) => e.exerciseNameSnapshot === 'Peso Muerto Rumano (Barra)');
     const firstSet = rdl1?.sets[0];
     if (!firstSet) throw new Error('sin series');
     await workouts.updateSet(firstSet.id, { weightKg: 95 });
@@ -153,7 +153,7 @@ describe('entreno desde rutina', () => {
 
     await workouts.start({ routineId, name: 'lower 1', defaultRestSeconds: 150 });
     const w2 = await workouts.getActive();
-    const rdl2 = w2?.exercises.find((e) => e.exerciseNameSnapshot === 'Peso muerto rumano (barra)');
+    const rdl2 = w2?.exercises.find((e) => e.exerciseNameSnapshot === 'Peso Muerto Rumano (Barra)');
     expect(rdl2?.sets[0]?.weightKg).toBe(95);
     const previous = await workouts.lastSessionSets(seedExerciseId('peso-muerto-rumano-barra'), w2?.id ?? null);
     expect(previous.map((s) => s.weightKg)).toEqual([95, 90, 90]);
@@ -199,7 +199,7 @@ describe('borrar un ejercicio con historial', () => {
     expect((await exercises.get(exId))?.deletedAt).not.toBeNull();
     expect(await exercises.history(exId)).toHaveLength(3);
     const past = await workouts.get(workoutId);
-    expect(past?.exercises.some((e) => e.exerciseNameSnapshot === 'Peso muerto rumano (barra)')).toBe(true);
+    expect(past?.exercises.some((e) => e.exerciseNameSnapshot === 'Peso Muerto Rumano (Barra)')).toBe(true);
     const routine = await routines.get(await lowerRoutineId());
     expect(routine?.exercises.some((e) => e.exercise.id === exId)).toBe(false);
   });
@@ -216,7 +216,7 @@ describe('rutinas', () => {
           restSeconds: 120,
           notes: null,
           supersetId: null,
-          sets: [{ setType: 'normal', targetWeightKg: 80, targetReps: 8, targetDurationS: null }],
+          sets: [{ setType: 'normal', targetWeightKg: 80, targetReps: 8, targetDurationS: null, targetDistanceM: null }],
         },
       ],
     });

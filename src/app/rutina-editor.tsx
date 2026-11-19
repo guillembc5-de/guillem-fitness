@@ -121,6 +121,7 @@ function ExerciseEditorCard({ exercise: e, all, unitLabel, supersetLetter }: Car
   const store = useRoutineDraft.getState();
   const weightLabel = weightColumnLabel(e.trackingType);
   const isDuration = e.trackingType === 'duration';
+  const isCardio = e.trackingType === 'distance_duration';
 
   const chooseSupersetPartner = () =>
     showActionSheet(
@@ -207,8 +208,13 @@ function ExerciseEditorCard({ exercise: e, all, unitLabel, supersetLetter }: Car
             {weightLabel === 'KG' ? unitLabel : `+${unitLabel}`}
           </AppText>
         ) : null}
+        {isCardio ? (
+          <AppText variant="overline" color="textSecondary" align="center" style={styles.flex}>
+            Km
+          </AppText>
+        ) : null}
         <AppText variant="overline" color="textSecondary" align="center" style={styles.flex}>
-          {isDuration ? 'Seg' : 'Reps'}
+          {isCardio ? 'Min' : isDuration ? 'Seg' : 'Reps'}
         </AppText>
         <View style={styles.colAction} />
       </View>
@@ -229,11 +235,22 @@ function ExerciseEditorCard({ exercise: e, all, unitLabel, supersetLetter }: Car
                 placeholder="–"
               />
             ) : null}
+            {isCardio ? (
+              <SetCell
+                accessibilityLabel={`Kilómetros objetivo serie ${number}`}
+                value={s.distance}
+                onChangeText={(distance) => store.updateSet(e.key, s.key, { distance })}
+                maxDecimals={2}
+                placeholder="–"
+              />
+            ) : null}
             <SetCell
-              accessibilityLabel={isDuration ? `Segundos objetivo serie ${number}` : `Repeticiones objetivo serie ${number}`}
-              value={isDuration ? s.duration : s.reps}
-              onChangeText={(t) => store.updateSet(e.key, s.key, isDuration ? { duration: t } : { reps: t })}
-              maxDecimals={0}
+              accessibilityLabel={
+                isCardio ? `Minutos objetivo serie ${number}` : isDuration ? `Segundos objetivo serie ${number}` : `Repeticiones objetivo serie ${number}`
+              }
+              value={isDuration || isCardio ? s.duration : s.reps}
+              onChangeText={(t) => store.updateSet(e.key, s.key, isDuration || isCardio ? { duration: t } : { reps: t })}
+              maxDecimals={isCardio ? 1 : 0}
               placeholder="–"
             />
             <Pressable accessibilityRole="button" accessibilityLabel="Borrar serie" onPress={() => store.removeSet(e.key, s.key)} style={styles.colAction}>

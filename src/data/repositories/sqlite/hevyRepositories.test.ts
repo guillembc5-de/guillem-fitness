@@ -71,7 +71,7 @@ describe('entreno en vivo (funciones tipo Hevy)', () => {
     const firstSet = (await workouts.get(w.id))?.exercises[1]?.sets[2];
     if (firstSet) await workouts.updateSet(firstSet.id, { rpe: 8.5 });
     const after = await workouts.get(w.id);
-    expect(after?.exercises.map((e) => e.exerciseNameSnapshot)).toEqual(['Remo con barra', 'Press militar (barra)']);
+    expect(after?.exercises.map((e) => e.exerciseNameSnapshot)).toEqual(['Remo Inclinado (Barra)', 'Press militar (barra)']);
     expect(after?.exercises[0]?.notes).toBe('agarre ancho');
     expect(after?.exercises[1]?.sets.map((s) => s.setType)).toEqual(['warmup', 'warmup', 'normal']);
     expect(after?.exercises[1]?.sets[2]?.rpe).toBe(8.5);

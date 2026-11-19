@@ -32,6 +32,10 @@ function weightText(kg: number | null, unit: WeightUnit): string {
   return kg === null ? '' : toInputText(toDisplayWeight(kg, unit), 2);
 }
 
+/** Cardio: km con hasta 2 decimales y minutos con 1. */
+const kmText = (m: number | null) => (m === null ? '' : toInputText(m / 1000, 2));
+const minText = (s: number | null) => (s === null ? '' : toInputText(s / 60, 1));
+
 /**
  * Fila de una serie. Los valores se editan en local y se guardan al salir del
  * campo o al marcar la serie (que los guarda todos).
@@ -39,11 +43,14 @@ function weightText(kg: number | null, unit: WeightUnit): string {
 function SetRowImpl({ set, number, tracking, unit, previous, records, showRpe, onUpdate, onComplete, onUncomplete, onMenu, onRpe }: Props) {
   const [weight, setWeight] = useState(() => weightText(set.weightKg, unit));
   const [reps, setReps] = useState(() => (set.reps !== null ? String(set.reps) : ''));
-  const [duration, setDuration] = useState(() => (set.durationS !== null ? String(set.durationS) : ''));
+  const isCardio = tracking === 'distance_duration';
+  const durationText = (s: number | null) => (isCardio ? minText(s) : s !== null ? String(s) : '');
+  const [duration, setDuration] = useState(() => durationText(set.durationS));
+  const [distance, setDistance] = useState(() => kmText(set.distanceM));
 
   // Si un valor cambia en la base de datos (copiar «anterior», guardar), se
   // actualiza solo ese campo; los demás conservan lo que estés escribiendo.
-  const [synced, setSynced] = useState({ w: set.weightKg, r: set.reps, d: set.durationS, unit });
+  const [synced, setSynced] = useState({ w: set.weightKg, r: set.reps, d: set.durationS, m: set.distanceM, unit });
   if (synced.w !== set.weightKg || synced.unit !== unit) {
     setSynced((s) => ({ ...s, w: set.weightKg, unit }));
     setWeight(weightText(set.weightKg, unit));
@@ -54,7 +61,11 @@ function SetRowImpl({ set, number, tracking, unit, previous, records, showRpe, o
   }
   if (synced.d !== set.durationS) {
     setSynced((s) => ({ ...s, d: set.durationS }));
-    setDuration(set.durationS !== null ? String(set.durationS) : '');
+    setDuration(durationText(set.durationS));
+  }
+  if (synced.m !== set.distanceM) {
+    setSynced((s) => ({ ...s, m: set.distanceM }));
+    setDistance(kmText(set.distanceM));
   }
 
   const hasWeight = tracking === 'weight_reps' || tracking === 'added_weight_reps';
@@ -65,6 +76,15 @@ function SetRowImpl({ set, number, tracking, unit, previous, records, showRpe, o
     const w = parseDecimal(weight);
     const r = parseDecimal(reps);
     const d = parseDecimal(duration);
+    const km = parseDecimal(distance);
+    if (isCardio) {
+      return {
+        weightKg: null,
+        reps: null,
+        durationS: d !== null ? Math.round(d * 60) : null,
+        distanceM: km !== null ? Math.round(km * 1000) : null,
+      };
+    }
     return {
       weightKg: hasWeight ? (w !== null ? fromDisplayWeight(w, unit) : null) : null,
       reps: isDuration ? null : r !== null ? Math.round(r) : null,
@@ -72,14 +92,18 @@ function SetRowImpl({ set, number, tracking, unit, previous, records, showRpe, o
     };
   };
 
+  const fromPrevious = (p: WorkoutSet): SetPatch => ({ weightKg: p.weightKg, reps: p.reps, durationS: p.durationS, distanceM: p.distanceM });
+
   const commit = () => {
     const v = values();
-    if (v.weightKg !== set.weightKg || v.reps !== set.reps || v.durationS !== set.durationS) onUpdate(set.id, v);
+    const changed =
+      v.weightKg !== set.weightKg || v.reps !== set.reps || v.durationS !== set.durationS || (isCardio && v.distanceM !== set.distanceM);
+    if (changed) onUpdate(set.id, v);
   };
 
   const copyPrevious = () => {
     if (!previous) return;
-    onUpdate(set.id, { weightKg: previous.weightKg, reps: previous.reps, durationS: previous.durationS });
+    onUpdate(set.id, fromPrevious(previous));
   };
 
   const toggle = () => {
@@ -88,9 +112,10 @@ function SetRowImpl({ set, number, tracking, unit, previous, records, showRpe, o
       return;
     }
     let v = values();
-    const missing = isDuration ? v.durationS === null : v.reps === null;
-    if (missing && previous) v = { weightKg: previous.weightKg, reps: previous.reps, durationS: previous.durationS };
-    if (isDuration ? v.durationS === null : v.reps === null) {
+    const isMissing = (x: SetPatch) =>
+      isCardio ? (x.durationS ?? null) === null && (x.distanceM ?? null) === null : isDuration ? (x.durationS ?? null) === null : (x.reps ?? null) === null;
+    if (isMissing(v) && previous) v = fromPrevious(previous);
+    if (isMissing(v)) {
       hapticWarning();
       return;
     }
@@ -116,6 +141,26 @@ function SetRowImpl({ set, number, tracking, unit, previous, records, showRpe, o
           {previous ? formatSetShort(tracking, previous, unit) : '–'}
         </AppText>
       </Pressable>
+      {isCardio ? (
+        <>
+          <SetCell
+            accessibilityLabel={`Kilómetros serie ${number}`}
+            value={distance}
+            onChangeText={setDistance}
+            onEndEditing={commit}
+            maxDecimals={2}
+            placeholder={previous?.distanceM ? kmText(previous.distanceM) : 'km'}
+          />
+          <SetCell
+            accessibilityLabel={`Minutos serie ${number}`}
+            value={duration}
+            onChangeText={setDuration}
+            onEndEditing={commit}
+            maxDecimals={1}
+            placeholder={previous?.durationS ? minText(previous.durationS) : 'min'}
+          />
+        </>
+      ) : null}
       {hasWeight ? (
         <SetCell
           accessibilityLabel={`Peso serie ${number}`}
@@ -138,7 +183,7 @@ function SetRowImpl({ set, number, tracking, unit, previous, records, showRpe, o
             />
           ) : null}
         </>
-      ) : (
+      ) : isCardio ? null : (
         <SetCell
           accessibilityLabel={`Repeticiones serie ${number}`}
           value={reps}
@@ -241,9 +286,20 @@ export function SetHeader({ tracking, unit, showRpe }: { tracking: TrackingType;
           {tracking === 'added_weight_reps' ? `+${unitLabel}` : unitLabel}
         </AppText>
       ) : null}
-      <AppText variant="overline" color="textSecondary" align="center" style={styles.flex}>
-        {tracking === 'duration' ? 'Seg' : 'Reps'}
-      </AppText>
+      {tracking === 'distance_duration' ? (
+        <>
+          <AppText variant="overline" color="textSecondary" align="center" style={styles.flex}>
+            Km
+          </AppText>
+          <AppText variant="overline" color="textSecondary" align="center" style={styles.flex}>
+            Min
+          </AppText>
+        </>
+      ) : (
+        <AppText variant="overline" color="textSecondary" align="center" style={styles.flex}>
+          {tracking === 'duration' ? 'Seg' : 'Reps'}
+        </AppText>
+      )}
       {tracking === 'duration' ? <View style={styles.timerSpace} /> : null}
       {showRpe ? (
         <AppText variant="overline" color="textSecondary" align="center" style={styles.colRpe}>

@@ -1,4 +1,4 @@
-import type { Equipment, MuscleGroup, SetType, TrackingType } from './enums';
+import type { CardioKind, Equipment, MuscleGroup, SetType, TrackingType } from './enums';
 import type { SyncMeta } from './types';
 
 export type Exercise = SyncMeta & {
@@ -11,6 +11,7 @@ export type Exercise = SyncMeta & {
   defaultRestSeconds: number | null;
   isCustom: boolean;
   notes: string | null;
+  cardioKind: CardioKind | null;
 };
 
 export type ExerciseInput = {
@@ -20,6 +21,8 @@ export type ExerciseInput = {
   trackingType: TrackingType;
   defaultRestSeconds: number | null;
   notes: string | null;
+  /** Solo cardio (por ejemplo, al crearlo desde Hevy). */
+  cardioKind?: CardioKind | null;
 };
 
 export type Routine = SyncMeta & {
@@ -43,6 +46,7 @@ export type RoutineSetTemplate = {
   targetWeightKg: number | null;
   targetReps: number | null;
   targetDurationS: number | null;
+  targetDistanceM: number | null;
 };
 
 export type RoutineExerciseDetail = {
@@ -77,6 +81,8 @@ export type WorkoutSet = SyncMeta & {
   weightKg: number | null;
   reps: number | null;
   durationS: number | null;
+  /** Metros (cardio). */
+  distanceM: number | null;
   /** Esfuerzo percibido (6–10). */
   rpe: number | null;
   completedAt: number | null;
@@ -108,6 +114,8 @@ export type Workout = SyncMeta & {
   restNotificationId: string | null;
   notes: string | null;
   isDemo: boolean;
+  /** Si vino de otra app (Hevy), su identificador allí. */
+  externalId: string | null;
 };
 
 export type WorkoutDetail = Workout & { exercises: WorkoutExercise[] };
@@ -116,6 +124,10 @@ export type WorkoutSummary = Workout & {
   exerciseCount: number;
   setCount: number;
   volume: number;
+  /** Segundos de cardio que ya cuentan los pasos (cinta, correr). */
+  cardioStepsS: number;
+  /** Segundos de cardio que no dan pasos (bici, elíptica, remo). */
+  cardioMachineS: number;
 };
 
 /** Una serie completada del historial de un ejercicio. */
@@ -127,11 +139,36 @@ export type ExerciseHistorySet = {
   weightKg: number | null;
   reps: number | null;
   durationS: number | null;
+  distanceM: number | null;
   completedAt: number | null;
   position: number;
 };
 
-export type SetPatch = Partial<Pick<WorkoutSet, 'setType' | 'weightKg' | 'reps' | 'durationS' | 'rpe'>>;
+/** Un entreno que llega de otra app (Hevy), ya con los ejercicios de la app resueltos. */
+export type ImportedWorkout = {
+  externalId: string;
+  signature: string;
+  name: string;
+  startedAt: number;
+  endedAt: number;
+  notes: string | null;
+  routineId: string | null;
+  exercises: {
+    exerciseId: string;
+    nameSnapshot: string;
+    restSeconds: number;
+    notes: string | null;
+    supersetId: string | null;
+    sets: { setType: SetType; weightKg: number | null; reps: number | null; durationS: number | null; distanceM: number | null; rpe: number | null }[];
+  }[];
+};
+
+export type ImportCounts = { inserted: number; updated: number; skipped: number };
+
+/** Estado de un entreno importado: su huella y si lo borraste en la app. */
+export type ExternalState = { id: string; signature: string | null; deleted: boolean };
+
+export type SetPatch = Partial<Pick<WorkoutSet, 'setType' | 'weightKg' | 'reps' | 'durationS' | 'distanceM' | 'rpe'>>;
 
 /** Datos editables de un entreno ya terminado. */
 export type WorkoutDetailsPatch = { name: string; notes: string | null; startedAt: number; endedAt: number };
